@@ -50,7 +50,7 @@ pub fn write_pairs<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
 
     // Write x,y pairs
     for (x, y) in x_values.iter().zip(spc.data.iter()) {
-        writeln!(writer, "{:.2}, {:.2}", x, y)?;
+        writeln!(writer, "{}, {}", x, y)?;
     }
 
     Ok(())
