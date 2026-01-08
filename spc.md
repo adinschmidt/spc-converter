@@ -1,5 +1,7 @@
 # Pulsar SPC (SPC0) File Format Specification
 
+> **Note**: This specification was reverse-engineered from the [Spectrum Analyzer Suite source code](https://www.open-raman.org/build/software/) and is not derived from official documentation. While it aims to be accurate, there may be discrepancies or undocumented edge cases.
+
 This document describes the binary format of `.spc` files produced by the Spectrum Analyzer Suite.
 The format consists of two layers:
 
