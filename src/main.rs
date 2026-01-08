@@ -32,6 +32,10 @@ struct Cli {
     /// Show verbose output
     #[arg(short, long)]
     verbose: bool,
+
+    /// Generate PNG plot(s) of the spectrum
+    #[arg(long)]
+    plot: bool,
 }
 
 #[derive(Clone, ValueEnum)]
@@ -124,6 +128,26 @@ fn process_file(cli: &Cli, input_path: &PathBuf) -> Result<PathBuf, Box<dyn std:
     }
 
     writer.flush()?;
+
+    // Generate plot if requested
+    if cli.plot {
+        let plot_path = input_path.with_extension("png");
+        
+        if cli.verbose {
+            let axis_info = output::select_best_axis(&spc);
+            if axis_info.unit.is_empty() {
+                eprintln!("  Plot axis: {}", axis_info.name);
+            } else {
+                eprintln!("  Plot axis: {} ({})", axis_info.name, axis_info.unit);
+            }
+        }
+        
+        output::write_plot_default(&spc, &plot_path)?;
+        
+        if cli.verbose {
+            eprintln!("  -> \"{}\"", plot_path.display());
+        }
+    }
 
     Ok(output_path)
 }
