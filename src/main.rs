@@ -38,6 +38,8 @@ struct Cli {
 enum OutputFormat {
     Json,
     Csv,
+    /// LLM-friendly x,y pairs with context header
+    Pairs,
 }
 
 fn main() {
@@ -116,6 +118,9 @@ fn process_file(cli: &Cli, input_path: &PathBuf) -> Result<PathBuf, Box<dyn std:
         OutputFormat::Csv => {
             output::write_csv_spc(&spc, &mut writer)?;
         }
+        OutputFormat::Pairs => {
+            output::write_pairs(&spc, &mut writer)?;
+        }
     }
 
     writer.flush()?;
@@ -127,6 +132,7 @@ fn get_output_path(cli: &Cli, input_path: &PathBuf) -> PathBuf {
     let extension = match cli.format {
         OutputFormat::Json => "json",
         OutputFormat::Csv => "csv",
+        OutputFormat::Pairs => "txt",
     };
 
     if let Some(ref output) = cli.output {

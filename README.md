@@ -32,6 +32,11 @@ Convert to CSV:
 spc-convert -f csv path/to/spectrum.spc
 ```
 
+Convert to LLM-friendly pairs format:
+```bash
+spc-convert -f pairs path/to/spectrum.spc
+```
+
 ### Batch Processing
 Convert multiple files at once:
 ```bash
@@ -47,7 +52,7 @@ Arguments:
 
 Options:
   -o, --output <OUTPUT>  Output file path (for single input) or directory
-  -f, --format <FORMAT>  Output format [default: json] [possible values: json, csv]
+  -f, --format <FORMAT>  Output format [default: json] [possible values: json, csv, pairs]
   -p, --pretty           Pretty-print JSON output
   -v, --verbose          Show verbose output
   -h, --help             Print help
@@ -77,6 +82,21 @@ The JSON output contains all extracted and computed data:
 ```
 
 Note: Fields like `calibration`, `config`, `wavelength_axis`, and `raman_shift_axis` are omitted from the output if not present in the source file.
+
+## Output Format (Pairs)
+The pairs format is optimized for LLM consumption, with a minimal header and x,y value pairs:
+
+```
+# Raman Spectrum
+# X-axis: Raman Shift (cm⁻¹), Y-axis: Intensity
+# Laser: 785nm, Points: 2048
+
+176.5, 1024.3
+180.2, 1089.7
+...
+```
+
+The x-axis automatically uses Raman shift if available, otherwise wavelength, or pixel index as fallback.
 
 ## Specification
 
