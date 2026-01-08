@@ -4,27 +4,41 @@ use crate::parser::{ParseError, StorageObject, unpack_container};
 use serde::Serialize;
 
 /// Calibration coefficients for converting pixel index to wavelength.
-/// Uses polynomial: wavelength = c[0] + c[1]*x + c[2]*x² + c[3]*x³
-/// where x is normalized pixel index (-1 to 1).
+/// Uses Legendre polynomial expansion: λ(x) = Σ aₖPₖ(x)
+/// where x is normalized pixel index (-1 to 1) and Pₖ are Legendre polynomials:
+///   P₀(x) = 1
+///   P₁(x) = x
+///   P₂(x) = ½(3x² - 1)
+///   P₃(x) = ½(5x³ - 3x)
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Calibration {
-    /// Polynomial coefficients [c0, c1, c2, c3]
+    /// Legendre polynomial coefficients [a0, a1, a2, a3]
     pub coefficients: Vec<f64>,
 }
 
 impl Calibration {
     /// Convert pixel index (0 to n-1) to wavelength (nm).
+    /// Uses Legendre polynomial expansion as defined in the Spectrum Analyzer Suite.
     pub fn pixel_to_wavelength(&self, pixel: usize, num_pixels: usize) -> Option<f64> {
         if self.coefficients.len() != 4 || num_pixels == 0 {
             return None;
         }
         
-        // Normalize pixel to -1..1 range
+        // Normalize pixel to -1..1 range: x = 2i/(N-1) - 1
         let x = 2.0 * (pixel as f64) / ((num_pixels - 1) as f64) - 1.0;
         
-        // Polynomial evaluation
+        // Legendre polynomial evaluation:
+        // P₀(x) = 1
+        // P₁(x) = x
+        // P₂(x) = ½(3x² - 1)
+        // P₃(x) = ½(5x³ - 3x)
+        let p0 = 1.0;
+        let p1 = x;
+        let p2 = 0.5 * (3.0 * x * x - 1.0);
+        let p3 = 0.5 * (5.0 * x * x * x - 3.0 * x);
+        
         let c = &self.coefficients;
-        Some(c[0] + c[1] * x + c[2] * x * x + c[3] * x * x * x)
+        Some(c[0] * p0 + c[1] * p1 + c[2] * p2 + c[3] * p3)
     }
     
     /// Convert pixel index to Raman shift (cm⁻¹) given laser wavelength.
@@ -61,17 +75,68 @@ impl Calibration {
     }
 }
 
+/// Axis type enumeration for display preferences.
+#[derive(Debug, Clone, Copy, Serialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AxisType {
+    /// Display as pixel indices
+    #[default]
+    Pixels = 0,
+    /// Display as wavelengths (nm)
+    Wavelengths = 1,
+    /// Display as Raman shifts (cm⁻¹)
+    RamanShifts = 2,
+}
+
+impl From<i32> for AxisType {
+    fn from(value: i32) -> Self {
+        match value {
+            1 => AxisType::Wavelengths,
+            2 => AxisType::RamanShifts,
+            _ => AxisType::Pixels,
+        }
+    }
+}
+
 /// Configuration parameters stored with the spectrum.
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct Config {
     /// Raman laser wavelength in nm (typically 785, 532, etc.)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub raman_wavelength: Option<f64>,
     /// Camera exposure time
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub exposure: Option<f64>,
     /// Camera gain
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gain: Option<f64>,
-    /// Smoothing setting
+    /// Smoothing kernel size
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub smoothing: Option<i32>,
+    /// Number of frames to average
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub average: Option<i32>,
+    /// Savitzky-Golay window size
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sgolay_window: Option<i32>,
+    /// Savitzky-Golay polynomial order
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sgolay_order: Option<i32>,
+    /// Savitzky-Golay derivative order
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sgolay_deriv: Option<i32>,
+    /// Median filter enabled
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub medfilt: Option<bool>,
+    /// Baseline removal enabled
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline: Option<bool>,
+    /// Savitzky-Golay filter enabled
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sgolay: Option<bool>,
+    /// Preferred axis type for display
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub axis: Option<AxisType>,
     /// Any other config values as key-value pairs
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub other: Vec<(String, String)>,
@@ -263,6 +328,22 @@ fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
                 let value = i32::from_le_bytes(data_var.data[..4].try_into().unwrap());
                 match name {
                     "smoothing" => config.smoothing = Some(value),
+                    "average" => config.average = Some(value),
+                    "sgolay_window" => config.sgolay_window = Some(value),
+                    "sgolay_order" => config.sgolay_order = Some(value),
+                    "sgolay_deriv" => config.sgolay_deriv = Some(value),
+                    "axis" => config.axis = Some(AxisType::from(value)),
+                    _ => {
+                        config.other.push((name.to_string(), format!("{}", value)));
+                    }
+                }
+            } else if data_var.data.len() == 1 {
+                // Bool value (stored as single byte)
+                let value = data_var.data[0] != 0;
+                match name {
+                    "medfilt" => config.medfilt = Some(value),
+                    "baseline" => config.baseline = Some(value),
+                    "sgolay" => config.sgolay = Some(value),
                     _ => {
                         config.other.push((name.to_string(), format!("{}", value)));
                     }

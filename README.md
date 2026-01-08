@@ -82,11 +82,6 @@ Note: Fields like `calibration`, `config`, `wavelength_axis`, and `raman_shift_a
 
 For a deep dive into the binary format internals, see [spc.md](spc.md).
 
-## Roadmap / Known Issues
-
-- [ ] **Calibration polynomial**: The current implementation uses a standard polynomial expansion (`c[0] + c[1]*x + c[2]*x² + c[3]*x³`) for wavelength calculation. However, the original Spectrum Analyzer Suite uses **Legendre polynomial** basis functions (`Σ aₖPₖ(x)` where `P₀=1`, `P₁=x`, `P₂=½(3x²-1)`, `P₃=½(5x³-3x)`). This will produce incorrect wavelength/Raman shift axes. See [spc.md § 3.2](spc.md#32-buffer-calibration-optional) for the correct formula.
-- [ ] **Config fields**: Only `raman_wavelength`, `exposure`, `gain`, and `smoothing` are extracted. Additional fields documented in the spec (`average`, `sgolay_*`, `medfilt`, `baseline`, `axis`) are not yet parsed.
-
 ## Third-Party Licenses
 
 The file format specification in [spc.md](spc.md) was derived from the [Spectrum Analyzer Suite](https://www.open-raman.org/build/software/) source code, which is licensed under the **CERN Open Hardware Licence Version 2 - Weakly Reciprocal (CERN-OHL-W v2)**.
