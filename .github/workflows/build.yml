@@ -79,14 +79,19 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R artifacts
 
+      - name: Rename binaries with platform names
+        run: |
+          mkdir -p release
+          mv artifacts/spc_converter-windows-x86_64.exe/spc_converter.exe release/spc_converter-windows-x86_64.exe
+          mv artifacts/spc_converter-macos-x86_64/spc_converter release/spc_converter-macos-x86_64
+          mv artifacts/spc_converter-macos-arm64/spc_converter release/spc_converter-macos-arm64
+          mv artifacts/spc_converter-linux-x86_64/spc_converter release/spc_converter-linux-x86_64
+          ls -la release/
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            artifacts/spc_converter-windows-x86_64.exe/spc_converter.exe
-            artifacts/spc_converter-macos-x86_64/spc_converter
-            artifacts/spc_converter-macos-arm64/spc_converter
-            artifacts/spc_converter-linux-x86_64/spc_converter
+          files: release/*
           generate_release_notes: true
           draft: false
           prerelease: false
