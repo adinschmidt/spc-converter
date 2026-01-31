@@ -2,11 +2,13 @@
 //!
 //! Convert Spectrum Analyzer Suite .spc files to JSON or CSV format.
 
+#![allow(clippy::multiple_crate_versions)]
+
 use clap::{Parser, ValueEnum};
 use spc_converter::{output, SpcFile};
 use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(name = "spc-convert")]
@@ -85,7 +87,7 @@ fn main() {
     }
 }
 
-fn process_file(cli: &Cli, input_path: &PathBuf) -> Result<PathBuf, Box<dyn std::error::Error>> {
+fn process_file(cli: &Cli, input_path: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // Parse the SPC file (now with calibration and config)
     let spc = SpcFile::from_file(input_path)?;
 
@@ -152,28 +154,28 @@ fn process_file(cli: &Cli, input_path: &PathBuf) -> Result<PathBuf, Box<dyn std:
     Ok(output_path)
 }
 
-fn get_output_path(cli: &Cli, input_path: &PathBuf) -> PathBuf {
+fn get_output_path(cli: &Cli, input_path: &Path) -> PathBuf {
     let extension = match cli.format {
         OutputFormat::Json => "json",
         OutputFormat::Csv => "csv",
         OutputFormat::Pairs => "txt",
     };
 
-    if let Some(ref output) = cli.output {
-        if cli.input.len() == 1 {
-            // Single file: use output as-is if it has an extension, otherwise add one
-            if output.extension().is_some() {
-                output.clone()
+    cli.output.as_ref().map_or_else(
+        || input_path.with_extension(extension),
+        |output| {
+            if cli.input.len() == 1 {
+                // Single file: use output as-is if it has an extension, otherwise add one
+                if output.extension().is_some() {
+                    output.clone()
+                } else {
+                    output.with_extension(extension)
+                }
             } else {
-                output.with_extension(extension)
+                // Multiple files: output is a directory
+                let filename = input_path.file_stem().unwrap_or_default().to_string_lossy();
+                output.join(format!("{filename}.{extension}"))
             }
-        } else {
-            // Multiple files: output is a directory
-            let filename = input_path.file_stem().unwrap_or_default().to_string_lossy();
-            output.join(format!("{filename}.{extension}"))
-        }
-    } else {
-        // No output specified: create alongside input
-        input_path.with_extension(extension)
-    }
+        },
+    )
 }
