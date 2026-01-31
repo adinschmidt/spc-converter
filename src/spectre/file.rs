@@ -33,9 +33,11 @@ impl SpectreFile {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, ParseError> {
         // First unpack the container (decrypt + decompress)
         let buffers = crate::parser::unpack_container(bytes)?;
-        
+
         if buffers.is_empty() {
-            return Err(ParseError::MissingField("No buffers in container".to_string()));
+            return Err(ParseError::MissingField(
+                "No buffers in container".to_string(),
+            ));
         }
 
         // Parse the first buffer as a StorageObject

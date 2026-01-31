@@ -1,6 +1,6 @@
 //! Complete SPC file extraction including calibration and config.
 
-use crate::parser::{ParseError, StorageObject, unpack_container};
+use crate::parser::{unpack_container, ParseError, StorageObject};
 use serde::Serialize;
 
 /// Calibration coefficients for converting pixel index to wavelength.
@@ -23,10 +23,10 @@ impl Calibration {
         if self.coefficients.len() != 4 || num_pixels == 0 {
             return None;
         }
-        
+
         // Normalize pixel to -1..1 range: x = 2i/(N-1) - 1
         let x = 2.0 * (pixel as f64) / ((num_pixels - 1) as f64) - 1.0;
-        
+
         // Legendre polynomial evaluation:
         // P₀(x) = 1
         // P₁(x) = x
@@ -36,41 +36,53 @@ impl Calibration {
         let p1 = x;
         let p2 = 0.5 * (3.0 * x * x - 1.0);
         let p3 = 0.5 * (5.0 * x * x * x - 3.0 * x);
-        
+
         let c = &self.coefficients;
         Some(c[0] * p0 + c[1] * p1 + c[2] * p2 + c[3] * p3)
     }
-    
+
     /// Convert pixel index to Raman shift (cm⁻¹) given laser wavelength.
-    pub fn pixel_to_raman_shift(&self, pixel: usize, num_pixels: usize, laser_wavelength: f64) -> Option<f64> {
+    pub fn pixel_to_raman_shift(
+        &self,
+        pixel: usize,
+        num_pixels: usize,
+        laser_wavelength: f64,
+    ) -> Option<f64> {
         let wavelength = self.pixel_to_wavelength(pixel, num_pixels)?;
         // Raman shift = 1e7 * (1/λ_laser - 1/λ)
         Some(1e7 * (1.0 / laser_wavelength - 1.0 / wavelength))
     }
-    
+
     /// Generate wavelength axis for all pixels.
     pub fn generate_wavelength_axis(&self, num_pixels: usize) -> Option<Vec<f64>> {
         if self.coefficients.len() != 4 || num_pixels == 0 {
             return None;
         }
-        
+
         let axis: Vec<f64> = (0..num_pixels)
             .map(|i| self.pixel_to_wavelength(i, num_pixels).unwrap())
             .collect();
-        
+
         Some(axis)
     }
-    
+
     /// Generate Raman shift axis for all pixels.
-    pub fn generate_raman_shift_axis(&self, num_pixels: usize, laser_wavelength: f64) -> Option<Vec<f64>> {
+    pub fn generate_raman_shift_axis(
+        &self,
+        num_pixels: usize,
+        laser_wavelength: f64,
+    ) -> Option<Vec<f64>> {
         if self.coefficients.len() != 4 || num_pixels == 0 {
             return None;
         }
-        
+
         let axis: Vec<f64> = (0..num_pixels)
-            .map(|i| self.pixel_to_raman_shift(i, num_pixels, laser_wavelength).unwrap())
+            .map(|i| {
+                self.pixel_to_raman_shift(i, num_pixels, laser_wavelength)
+                    .unwrap()
+            })
             .collect();
-        
+
         Some(axis)
     }
 }
@@ -170,16 +182,18 @@ impl SpcFile {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, ParseError> {
         // First unpack the container (decrypt + decompress)
         let buffers = unpack_container(bytes)?;
-        
+
         if buffers.is_empty() {
-            return Err(ParseError::MissingField("No buffers in container".to_string()));
+            return Err(ParseError::MissingField(
+                "No buffers in container".to_string(),
+            ));
         }
 
         // Parse each buffer as a StorageObject
         let mut data_obj: Option<StorageObject> = None;
         let mut calibration_obj: Option<StorageObject> = None;
         let mut config_obj: Option<StorageObject> = None;
-        
+
         for buffer in &buffers {
             if let Ok(obj) = StorageObject::from_bytes(buffer) {
                 match obj.var_name.as_str() {
@@ -190,35 +204,38 @@ impl SpcFile {
                 }
             }
         }
-        
+
         // Data object is required
         let data_obj = data_obj.ok_or_else(|| ParseError::MissingField("data".to_string()))?;
-        
+
         // Extract SpectreFile data
         let uid = extract_string_child(&data_obj, "m_uid")?;
         let data = extract_double_vector_child(&data_obj, "m_data")?;
         let blank = extract_double_vector_child(&data_obj, "m_blank")?;
-        
+
         // Extract calibration if present
         let calibration = calibration_obj.and_then(|obj| {
-            extract_double_vector(&obj).ok().map(|coefficients| Calibration { coefficients })
+            extract_double_vector(&obj)
+                .ok()
+                .map(|coefficients| Calibration { coefficients })
         });
-        
+
         // Extract config if present
         let config = config_obj.and_then(|obj| extract_config(&obj).ok());
-        
+
         // Generate axes if possible
         let num_pixels = data.len();
-        let wavelength_axis = calibration.as_ref()
+        let wavelength_axis = calibration
+            .as_ref()
             .and_then(|cal| cal.generate_wavelength_axis(num_pixels));
-        
-        let raman_shift_axis = calibration.as_ref()
-            .and_then(|cal| {
-                config.as_ref()
-                    .and_then(|cfg| cfg.raman_wavelength)
-                    .and_then(|laser| cal.generate_raman_shift_axis(num_pixels, laser))
-            });
-        
+
+        let raman_shift_axis = calibration.as_ref().and_then(|cal| {
+            config
+                .as_ref()
+                .and_then(|cfg| cfg.raman_wavelength)
+                .and_then(|laser| cal.generate_raman_shift_axis(num_pixels, laser))
+        });
+
         Ok(Self {
             uid,
             data,
@@ -235,12 +252,12 @@ impl SpcFile {
         let bytes = std::fs::read(path)?;
         Self::from_bytes(&bytes)
     }
-    
+
     /// Check if this file has calibration data.
     pub fn has_calibration(&self) -> bool {
         self.calibration.is_some()
     }
-    
+
     /// Check if this file has Raman shift data.
     pub fn has_raman_shift(&self) -> bool {
         self.raman_shift_axis.is_some()
@@ -303,14 +320,14 @@ fn extract_double_vector(obj: &StorageObject) -> Result<Vec<f64>, ParseError> {
 /// each containing a "data" variable with the actual value.
 fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
     let mut config = Config::default();
-    
+
     // The config object contains children for each parameter
     // Each child is a dynamic_var<T> which stores the value in a variable named "data"
     for child in &obj.children {
         // Try to find a "data" variable in the child
         if let Some(data_var) = child.find_var("data") {
             let name = child.var_name.as_str();
-            
+
             if data_var.data.len() == 8 {
                 // Double value
                 let value = f64::from_le_bytes(data_var.data[..8].try_into().unwrap());
@@ -351,7 +368,7 @@ fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
             }
         }
     }
-    
+
     // Also check variables on the object itself (for simpler storage)
     for var in &obj.variables {
         if var.data.len() == 8 {
@@ -361,7 +378,6 @@ fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
             }
         }
     }
-    
+
     Ok(config)
 }
-

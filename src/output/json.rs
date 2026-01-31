@@ -1,6 +1,6 @@
 //! JSON output format.
 
-use crate::spectre::{SpectreFile, SpcFile};
+use crate::spectre::{SpcFile, SpectreFile};
 use serde::Serialize;
 use std::io::Write;
 

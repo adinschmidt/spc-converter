@@ -1,6 +1,6 @@
 //! CSV output format.
 
-use crate::spectre::{SpectreFile, SpcFile};
+use crate::spectre::{SpcFile, SpectreFile};
 use std::io::{self, Write};
 
 /// Write SpectreFile as CSV to a writer.
@@ -37,7 +37,7 @@ pub fn write_csv_spc<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
     // Determine what columns we have
     let has_wavelength = spc.wavelength_axis.is_some();
     let has_raman = spc.raman_shift_axis.is_some();
-    
+
     // Write header
     let mut header = String::from("index");
     if has_wavelength {
@@ -54,36 +54,42 @@ pub fn write_csv_spc<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
 
     // Determine max length
     let max_len = spc.data.len().max(spc.blank.len());
-    
+
     let wavelengths = spc.wavelength_axis.as_ref();
     let raman_shifts = spc.raman_shift_axis.as_ref();
 
     for i in 0..max_len {
         // Index
         write!(writer, "{}", i)?;
-        
+
         // Wavelength
         if has_wavelength {
-            let wl = wavelengths.and_then(|v| v.get(i)).copied().unwrap_or(f64::NAN);
+            let wl = wavelengths
+                .and_then(|v| v.get(i))
+                .copied()
+                .unwrap_or(f64::NAN);
             write!(writer, ",{}", wl)?;
         }
-        
+
         // Raman shift
         if has_raman {
-            let rs = raman_shifts.and_then(|v| v.get(i)).copied().unwrap_or(f64::NAN);
+            let rs = raman_shifts
+                .and_then(|v| v.get(i))
+                .copied()
+                .unwrap_or(f64::NAN);
             write!(writer, ",{}", rs)?;
         }
-        
+
         // Intensity
         let intensity = spc.data.get(i).copied().unwrap_or(f64::NAN);
         write!(writer, ",{}", intensity)?;
-        
+
         // Blank
         if !spc.blank.is_empty() {
             let blank = spc.blank.get(i).copied().unwrap_or(f64::NAN);
             write!(writer, ",{}", blank)?;
         }
-        
+
         writeln!(writer)?;
     }
 

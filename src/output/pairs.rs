@@ -23,16 +23,24 @@ pub fn write_pairs<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
         } else if let Some(ref wavelength) = spc.wavelength_axis {
             ("Wavelength", "nm", wavelength.clone())
         } else {
-            ("Pixel Index", "", (0..spc.data.len()).map(|i| i as f64).collect())
+            (
+                "Pixel Index",
+                "",
+                (0..spc.data.len()).map(|i| i as f64).collect(),
+            )
         };
 
     // Write header comments
     writeln!(writer, "# Raman Spectrum")?;
-    
+
     if x_axis_unit.is_empty() {
         writeln!(writer, "# X-axis: {}, Y-axis: Intensity", x_axis_name)?;
     } else {
-        writeln!(writer, "# X-axis: {} ({}), Y-axis: Intensity", x_axis_name, x_axis_unit)?;
+        writeln!(
+            writer,
+            "# X-axis: {} ({}), Y-axis: Intensity",
+            x_axis_name, x_axis_unit
+        )?;
     }
 
     // Add laser wavelength if available

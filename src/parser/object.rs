@@ -160,7 +160,10 @@ impl StorageObject {
 
     /// Get all variables as a map by name.
     pub fn vars_by_name(&self) -> HashMap<&str, &Variable> {
-        self.variables.iter().map(|v| (v.name.as_str(), v)).collect()
+        self.variables
+            .iter()
+            .map(|v| (v.name.as_str(), v))
+            .collect()
     }
 }
 
@@ -180,6 +183,5 @@ fn read_string(strings: &[u8], offset: u64) -> Result<String, ParseError> {
         .position(|&b| b == 0)
         .ok_or(ParseError::UnterminatedString(offset))?;
 
-    String::from_utf8(slice[..end].to_vec())
-        .map_err(|_| ParseError::UnterminatedString(offset))
+    String::from_utf8(slice[..end].to_vec()).map_err(|_| ParseError::UnterminatedString(offset))
 }

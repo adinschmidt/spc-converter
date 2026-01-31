@@ -5,7 +5,7 @@ use super::header::ParseError;
 /// Container header (packed, 80 bytes total with alignment).
 #[derive(Debug)]
 pub struct ContainerHeader {
-    pub ident: u32,           // Should be 0x53504330 ("0CPS" as bytes, "SPC0" as string)
+    pub ident: u32, // Should be 0x53504330 ("0CPS" as bytes, "SPC0" as string)
     pub checksum: u32,
     pub num_buffers: u64,
     pub buffers_table_ofs: u64,
@@ -68,7 +68,7 @@ pub fn decrypt(data: &mut [u8], encryption_key: u32, seed: u32, block_size: usiz
 
     let num_elements = data.len() / 4;
     let key = encryption_key ^ seed;
-    
+
     // Helper: replicate byte across u32
     let repmat = |value: u32| -> u32 {
         let v = value & 0xFF;
@@ -80,9 +80,8 @@ pub fn decrypt(data: &mut [u8], encryption_key: u32, seed: u32, block_size: usiz
     let mut current_key = key.wrapping_add(repmat(num_elements as u32));
 
     // Process as u32 words
-    let words: &mut [u32] = unsafe {
-        std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u32, num_elements)
-    };
+    let words: &mut [u32] =
+        unsafe { std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u32, num_elements) };
 
     for j in 0..block_size {
         let mut i = j;
@@ -189,10 +188,10 @@ pub fn rle0_decode(data: &[u8]) -> Vec<u8> {
 /// Decode based on encoding type.
 pub fn decode(data: &[u8], encoding: u8) -> Vec<u8> {
     match encoding {
-        0 => data.to_vec(), // ENCODING_NONE
+        0 => data.to_vec(),     // ENCODING_NONE
         1 => rle8_decode(data), // ENCODING_RLE8
         2 => rle0_decode(data), // ENCODING_RLE0
-        _ => data.to_vec(), // Unknown, return as-is
+        _ => data.to_vec(),     // Unknown, return as-is
     }
 }
 
@@ -238,7 +237,7 @@ pub fn unpack_container(data: &[u8]) -> Result<Vec<Vec<u8>>, ParseError> {
     // Parse buffer table
     let table_start = header.buffers_table_ofs as usize;
     let data_start = header.buffers_data_ofs as usize;
-    
+
     let mut buffers = Vec::new();
 
     for i in 0..header.num_buffers as usize {
@@ -251,10 +250,10 @@ pub fn unpack_container(data: &[u8]) -> Result<Vec<Vec<u8>>, ParseError> {
         }
 
         let entry = BufferEntry::from_bytes(&data[entry_start..]);
-        
+
         let buf_start = data_start + entry.offset as usize;
         let buf_end = buf_start + entry.size as usize;
-        
+
         if buf_end > data.len() {
             return Err(ParseError::InvalidOffset {
                 offset: buf_end as u64,

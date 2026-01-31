@@ -132,7 +132,7 @@ fn process_file(cli: &Cli, input_path: &PathBuf) -> Result<PathBuf, Box<dyn std:
     // Generate plot if requested
     if cli.plot {
         let plot_path = input_path.with_extension("png");
-        
+
         if cli.verbose {
             let axis_info = output::select_best_axis(&spc);
             if axis_info.unit.is_empty() {
@@ -141,9 +141,9 @@ fn process_file(cli: &Cli, input_path: &PathBuf) -> Result<PathBuf, Box<dyn std:
                 eprintln!("  Plot axis: {} ({})", axis_info.name, axis_info.unit);
             }
         }
-        
+
         output::write_plot_default(&spc, &plot_path)?;
-        
+
         if cli.verbose {
             eprintln!("  -> \"{}\"", plot_path.display());
         }
@@ -169,10 +169,7 @@ fn get_output_path(cli: &Cli, input_path: &PathBuf) -> PathBuf {
             }
         } else {
             // Multiple files: output is a directory
-            let filename = input_path
-                .file_stem()
-                .unwrap_or_default()
-                .to_string_lossy();
+            let filename = input_path.file_stem().unwrap_or_default().to_string_lossy();
             output.join(format!("{}.{}", filename, extension))
         }
     } else {

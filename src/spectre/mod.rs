@@ -4,4 +4,4 @@ mod file;
 mod spc_file;
 
 pub use file::*;
-pub use spc_file::{SpcFile, Calibration, Config, AxisType};
+pub use spc_file::{AxisType, Calibration, Config, SpcFile};
