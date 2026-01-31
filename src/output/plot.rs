@@ -20,7 +20,7 @@ pub struct PlotAxisInfo {
 /// Determines the best axis to use for plotting based on available data.
 /// Priority: Raman Shift > Wavelength > Pixel Index
 #[must_use]
-#[allow(clippy::option_if_let_else)]
+#[allow(clippy::option_if_let_else, clippy::cast_precision_loss)]
 pub fn select_best_axis(spc: &SpcFile) -> PlotAxisInfo {
     if let Some(ref raman) = spc.raman_shift_axis {
         PlotAxisInfo {

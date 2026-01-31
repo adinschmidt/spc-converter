@@ -18,7 +18,7 @@ use std::io::{self, Write};
 ///
 /// # Errors
 /// Returns any I/O error from writing to `writer`.
-#[allow(clippy::option_if_let_else)]
+#[allow(clippy::option_if_let_else, clippy::cast_precision_loss)]
 pub fn write_pairs<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
     // Determine which x-axis to use (prefer Raman shift, then wavelength, then index)
     let (x_axis_name, x_axis_unit, x_values): (&str, &str, Vec<f64>) =

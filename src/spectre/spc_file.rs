@@ -21,8 +21,9 @@ impl Calibration {
     /// Convert pixel index (0 to n-1) to wavelength (nm).
     /// Uses Legendre polynomial expansion as defined in the Spectrum Analyzer Suite.
     #[must_use]
+    #[allow(clippy::cast_precision_loss)]
     pub fn pixel_to_wavelength(&self, pixel: usize, num_pixels: usize) -> Option<f64> {
-        if self.coefficients.len() != 4 || num_pixels == 0 {
+        if self.coefficients.len() != 4 || num_pixels < 2 {
             return None;
         }
 
