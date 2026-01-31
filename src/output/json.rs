@@ -4,7 +4,7 @@ use crate::spectre::{SpcFile, SpectreFile};
 use serde::Serialize;
 use std::io::Write;
 
-/// JSON output with metadata (legacy SpectreFile format).
+/// JSON output with metadata (legacy `SpectreFile` format).
 #[derive(Serialize)]
 pub struct JsonOutput<'a> {
     pub uid: &'a str,
@@ -20,7 +20,7 @@ pub struct JsonMetadata {
     pub source_format: &'static str,
 }
 
-/// Write SpectreFile as JSON to a writer.
+/// Write `SpectreFile` as JSON to a writer.
 pub fn write_json<W: Write>(
     spectre: &SpectreFile,
     writer: W,
@@ -44,7 +44,7 @@ pub fn write_json<W: Write>(
     }
 }
 
-/// Write SpectreFile as JSON string.
+/// Write `SpectreFile` as JSON string.
 pub fn to_json_string(spectre: &SpectreFile, pretty: bool) -> Result<String, serde_json::Error> {
     let output = JsonOutput {
         uid: &spectre.uid,
@@ -64,7 +64,7 @@ pub fn to_json_string(spectre: &SpectreFile, pretty: bool) -> Result<String, ser
     }
 }
 
-/// Write SpcFile (with calibration) as JSON to a writer.
+/// Write `SpcFile` (with calibration) as JSON to a writer.
 pub fn write_json_spc<W: Write>(
     spc: &SpcFile,
     writer: W,
@@ -78,7 +78,7 @@ pub fn write_json_spc<W: Write>(
     }
 }
 
-/// Write SpcFile as JSON string.
+/// Write `SpcFile` as JSON string.
 pub fn to_json_string_spc(spc: &SpcFile, pretty: bool) -> Result<String, serde_json::Error> {
     if pretty {
         serde_json::to_string_pretty(spc)

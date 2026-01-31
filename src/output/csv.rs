@@ -3,7 +3,7 @@
 use crate::spectre::{SpcFile, SpectreFile};
 use std::io::{self, Write};
 
-/// Write SpectreFile as CSV to a writer.
+/// Write `SpectreFile` as CSV to a writer.
 ///
 /// Format: index,intensity,blank
 pub fn write_csv<W: Write>(spectre: &SpectreFile, mut writer: W) -> io::Result<()> {
@@ -16,23 +16,23 @@ pub fn write_csv<W: Write>(spectre: &SpectreFile, mut writer: W) -> io::Result<(
     for i in 0..max_len {
         let intensity = spectre.data.get(i).copied().unwrap_or(f64::NAN);
         let blank = spectre.blank.get(i).copied().unwrap_or(f64::NAN);
-        writeln!(writer, "{},{},{}", i, intensity, blank)?;
+        writeln!(writer, "{i},{intensity},{blank}")?;
     }
 
     Ok(())
 }
 
-/// Write SpectreFile as CSV string.
+/// Write `SpectreFile` as CSV string.
 pub fn to_csv_string(spectre: &SpectreFile) -> io::Result<String> {
     let mut buf = Vec::new();
     write_csv(spectre, &mut buf)?;
     String::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-/// Write SpcFile as CSV to a writer.
+/// Write `SpcFile` as CSV to a writer.
 ///
 /// If calibration is present, includes wavelength/wavenumber columns.
-/// Format: index,wavelength,raman_shift,intensity,blank
+/// Format: `index,wavelength,raman_shift,intensity,blank`
 pub fn write_csv_spc<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
     // Determine what columns we have
     let has_wavelength = spc.wavelength_axis.is_some();
@@ -50,7 +50,7 @@ pub fn write_csv_spc<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
     if !spc.blank.is_empty() {
         header.push_str(",blank");
     }
-    writeln!(writer, "{}", header)?;
+    writeln!(writer, "{header}")?;
 
     // Determine max length
     let max_len = spc.data.len().max(spc.blank.len());
@@ -60,7 +60,7 @@ pub fn write_csv_spc<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
 
     for i in 0..max_len {
         // Index
-        write!(writer, "{}", i)?;
+        write!(writer, "{i}")?;
 
         // Wavelength
         if has_wavelength {
@@ -68,7 +68,7 @@ pub fn write_csv_spc<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
                 .and_then(|v| v.get(i))
                 .copied()
                 .unwrap_or(f64::NAN);
-            write!(writer, ",{}", wl)?;
+            write!(writer, ",{wl}")?;
         }
 
         // Raman shift
@@ -77,17 +77,17 @@ pub fn write_csv_spc<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
                 .and_then(|v| v.get(i))
                 .copied()
                 .unwrap_or(f64::NAN);
-            write!(writer, ",{}", rs)?;
+            write!(writer, ",{rs}")?;
         }
 
         // Intensity
         let intensity = spc.data.get(i).copied().unwrap_or(f64::NAN);
-        write!(writer, ",{}", intensity)?;
+        write!(writer, ",{intensity}")?;
 
         // Blank
         if !spc.blank.is_empty() {
             let blank = spc.blank.get(i).copied().unwrap_or(f64::NAN);
-            write!(writer, ",{}", blank)?;
+            write!(writer, ",{blank}")?;
         }
 
         writeln!(writer)?;
@@ -96,7 +96,7 @@ pub fn write_csv_spc<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
     Ok(())
 }
 
-/// Write SpcFile as CSV string.
+/// Write `SpcFile` as CSV string.
 pub fn to_csv_string_spc(spc: &SpcFile) -> io::Result<String> {
     let mut buf = Vec::new();
     write_csv_spc(spc, &mut buf)?;

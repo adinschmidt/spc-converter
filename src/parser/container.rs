@@ -60,7 +60,7 @@ impl BufferEntry {
         }
 
         Ok(Self {
-            encoding: *data.get(0).ok_or(ParseError::FileTooSmall {
+            encoding: *data.first().ok_or(ParseError::FileTooSmall {
                 expected: 1,
                 actual: data.len(),
             })?,
@@ -92,7 +92,7 @@ pub fn decrypt(data: &mut [u8], encryption_key: u32, seed: u32, block_size: usiz
 
     // Process as u32 words
     let words: &mut [u32] =
-        unsafe { std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u32, num_elements) };
+        unsafe { std::slice::from_raw_parts_mut(data.as_mut_ptr().cast::<u32>(), num_elements) };
 
     for j in 0..block_size {
         let mut i = j;
@@ -107,6 +107,7 @@ pub fn decrypt(data: &mut [u8], encryption_key: u32, seed: u32, block_size: usiz
 }
 
 /// Compute checksum (for verification).
+#[must_use] 
 pub fn checksum(data: &[u8]) -> u32 {
     let mut sum: u32 = 0;
     let mut i = 0;
@@ -119,13 +120,13 @@ pub fn checksum(data: &[u8]) -> u32 {
 
     // Add u16s
     while let Ok(val) = read_u16_le(data, i) {
-        sum = sum.wrapping_add(!val as u32);
+        sum = sum.wrapping_add(u32::from(!val));
         i += 2;
     }
 
     // Add u8s
     while i < data.len() {
-        sum = sum.wrapping_add(!data[i] as u32);
+        sum = sum.wrapping_add(u32::from(!data[i]));
         i += 1;
     }
 
@@ -133,6 +134,7 @@ pub fn checksum(data: &[u8]) -> u32 {
 }
 
 /// RLE8 decode: pairs of (count, byte).
+#[must_use] 
 pub fn rle8_decode(data: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
     let mut i = 0;
@@ -140,7 +142,7 @@ pub fn rle8_decode(data: &[u8]) -> Vec<u8> {
     while i + 1 < data.len() {
         let count = data[i] as usize;
         let symbol = data[i + 1];
-        result.extend(std::iter::repeat(symbol).take(count));
+        result.extend(std::iter::repeat_n(symbol, count));
         i += 2;
     }
 
@@ -148,6 +150,7 @@ pub fn rle8_decode(data: &[u8]) -> Vec<u8> {
 }
 
 /// RLE0 decode: variable block size RLE.
+#[must_use] 
 pub fn rle0_decode(data: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
     let mut block_size: usize = 1;
@@ -195,6 +198,7 @@ pub fn rle0_decode(data: &[u8]) -> Vec<u8> {
 }
 
 /// Decode based on encoding type.
+#[must_use] 
 pub fn decode(data: &[u8], encoding: u8) -> Vec<u8> {
     match encoding {
         0 => data.to_vec(),     // ENCODING_NONE
@@ -204,7 +208,7 @@ pub fn decode(data: &[u8], encoding: u8) -> Vec<u8> {
     }
 }
 
-/// Unpack a container: decrypt, decompress, and return StorageObject data.
+/// Unpack a container: decrypt, decompress, and return `StorageObject` data.
 pub fn unpack_container(data: &[u8]) -> Result<Vec<Vec<u8>>, ParseError> {
     const ENCRYPTION_KEY: u32 = 0xfeedbeef;
     const BLOCK_SIZE: usize = 4;
@@ -239,7 +243,7 @@ pub fn unpack_container(data: &[u8]) -> Result<Vec<Vec<u8>>, ParseError> {
     if computed != header.checksum {
         return Err(ParseError::TypeMismatch {
             expected: format!("checksum 0x{:08X}", header.checksum),
-            actual: format!("0x{:08X}", computed),
+            actual: format!("0x{computed:08X}"),
         });
     }
 

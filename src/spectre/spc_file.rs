@@ -4,6 +4,7 @@ use crate::parser::{unpack_container, ParseError, StorageObject};
 use serde::Serialize;
 
 /// Calibration coefficients for converting pixel index to wavelength.
+///
 /// Uses Legendre polynomial expansion: λ(x) = Σ aₖPₖ(x)
 /// where x is normalized pixel index (-1 to 1) and Pₖ are Legendre polynomials:
 ///   P₀(x) = 1
@@ -19,6 +20,7 @@ pub struct Calibration {
 impl Calibration {
     /// Convert pixel index (0 to n-1) to wavelength (nm).
     /// Uses Legendre polynomial expansion as defined in the Spectrum Analyzer Suite.
+    #[must_use] 
     pub fn pixel_to_wavelength(&self, pixel: usize, num_pixels: usize) -> Option<f64> {
         if self.coefficients.len() != 4 || num_pixels == 0 {
             return None;
@@ -34,14 +36,15 @@ impl Calibration {
         // P₃(x) = ½(5x³ - 3x)
         let p0 = 1.0;
         let p1 = x;
-        let p2 = 0.5 * (3.0 * x * x - 1.0);
-        let p3 = 0.5 * (5.0 * x * x * x - 3.0 * x);
+        let p2 = 0.5 * (3.0 * x).mul_add(x, -1.0);
+        let p3 = 0.5 * (5.0 * x * x).mul_add(x, -(3.0 * x));
 
         let c = &self.coefficients;
-        Some(c[0] * p0 + c[1] * p1 + c[2] * p2 + c[3] * p3)
+        Some(c[3].mul_add(p3, c[2].mul_add(p2, c[0].mul_add(p0, c[1] * p1))))
     }
 
     /// Convert pixel index to Raman shift (cm⁻¹) given laser wavelength.
+    #[must_use] 
     pub fn pixel_to_raman_shift(
         &self,
         pixel: usize,
@@ -54,6 +57,7 @@ impl Calibration {
     }
 
     /// Generate wavelength axis for all pixels.
+    #[must_use] 
     pub fn generate_wavelength_axis(&self, num_pixels: usize) -> Option<Vec<f64>> {
         if self.coefficients.len() != 4 || num_pixels == 0 {
             return None;
@@ -65,6 +69,7 @@ impl Calibration {
     }
 
     /// Generate Raman shift axis for all pixels.
+    #[must_use] 
     pub fn generate_raman_shift_axis(
         &self,
         num_pixels: usize,
@@ -96,9 +101,9 @@ pub enum AxisType {
 impl From<i32> for AxisType {
     fn from(value: i32) -> Self {
         match value {
-            1 => AxisType::Wavelengths,
-            2 => AxisType::RamanShifts,
-            _ => AxisType::Pixels,
+            1 => Self::Wavelengths,
+            2 => Self::RamanShifts,
+            _ => Self::Pixels,
         }
     }
 }
@@ -165,7 +170,7 @@ pub struct SpcFile {
     /// Generated wavelength axis (if calibration is present).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wavelength_axis: Option<Vec<f64>>,
-    /// Generated Raman shift axis (if calibration and raman_wavelength are present).
+    /// Generated Raman shift axis (if calibration and `raman_wavelength` are present).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raman_shift_axis: Option<Vec<f64>>,
 }
@@ -247,17 +252,19 @@ impl SpcFile {
     }
 
     /// Check if this file has calibration data.
-    pub fn has_calibration(&self) -> bool {
+    #[must_use] 
+    pub const fn has_calibration(&self) -> bool {
         self.calibration.is_some()
     }
 
     /// Check if this file has Raman shift data.
-    pub fn has_raman_shift(&self) -> bool {
+    #[must_use] 
+    pub const fn has_raman_shift(&self) -> bool {
         self.raman_shift_axis.is_some()
     }
 }
 
-/// Extract a storage_string child as a String.
+/// Extract a `storage_string` child as a String.
 fn extract_string_child(obj: &StorageObject, name: &str) -> Result<String, ParseError> {
     let child = obj
         .find_child(name)
@@ -266,7 +273,7 @@ fn extract_string_child(obj: &StorageObject, name: &str) -> Result<String, Parse
     // storage_string stores: "size" (size_t) and "data" (char array)
     let data_var = child
         .find_var("data")
-        .ok_or_else(|| ParseError::MissingField(format!("{}.data", name)))?;
+        .ok_or_else(|| ParseError::MissingField(format!("{name}.data")))?;
 
     // Data is null-terminated string bytes
     let end = data_var
@@ -276,10 +283,10 @@ fn extract_string_child(obj: &StorageObject, name: &str) -> Result<String, Parse
         .unwrap_or(data_var.data.len());
 
     String::from_utf8(data_var.data[..end].to_vec())
-        .map_err(|_| ParseError::MissingField(format!("{} (invalid UTF-8)", name)))
+        .map_err(|_| ParseError::MissingField(format!("{name} (invalid UTF-8)")))
 }
 
-/// Extract a storage_vector<double> child as Vec<f64>.
+/// Extract a `storage_vector`<double> child as Vec<f64>.
 fn extract_double_vector_child(obj: &StorageObject, name: &str) -> Result<Vec<f64>, ParseError> {
     let child = obj
         .find_child(name)
@@ -288,7 +295,7 @@ fn extract_double_vector_child(obj: &StorageObject, name: &str) -> Result<Vec<f6
     extract_double_vector(child)
 }
 
-/// Extract a storage_vector<double> from a StorageObject.
+/// Extract a `storage_vector`<double> from a `StorageObject`.
 fn extract_double_vector(obj: &StorageObject) -> Result<Vec<f64>, ParseError> {
     // storage_vector<double> stores each element as a variable with empty name
     let mut values = Vec::with_capacity(obj.variables.len());
@@ -301,8 +308,8 @@ fn extract_double_vector(obj: &StorageObject) -> Result<Vec<f64>, ParseError> {
     Ok(values)
 }
 
-/// Extract config parameters from a StorageObject.
-/// The config stores wndParametersDialog fields as child objects (dynamic_var<T>),
+/// Extract config parameters from a `StorageObject`.
+/// The config stores wndParametersDialog fields as child objects (`dynamic_var`<T>),
 /// each containing a "data" variable with the actual value.
 fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
     let mut config = Config::default();
@@ -323,7 +330,7 @@ fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
                     "gain" => config.gain = Some(value),
                     _ => {
                         // Store as generic double param
-                        config.other.push((name.to_string(), format!("{}", value)));
+                        config.other.push((name.to_string(), format!("{value}")));
                     }
                 }
             } else if data_var.data.len() == 4 {
@@ -337,7 +344,7 @@ fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
                     "sgolay_deriv" => config.sgolay_deriv = Some(value),
                     "axis" => config.axis = Some(AxisType::from(value)),
                     _ => {
-                        config.other.push((name.to_string(), format!("{}", value)));
+                        config.other.push((name.to_string(), format!("{value}")));
                     }
                 }
             } else if data_var.data.len() == 1 {
@@ -348,7 +355,7 @@ fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
                     "baseline" => config.baseline = Some(value),
                     "sgolay" => config.sgolay = Some(value),
                     _ => {
-                        config.other.push((name.to_string(), format!("{}", value)));
+                        config.other.push((name.to_string(), format!("{value}")));
                     }
                 }
             }

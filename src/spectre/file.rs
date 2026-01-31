@@ -1,4 +1,4 @@
-//! SpectreFile extraction from StorageObject tree.
+//! `SpectreFile` extraction from `StorageObject` tree.
 
 use crate::parser::{ParseError, StorageObject};
 use serde::Serialize;
@@ -15,7 +15,7 @@ pub struct SpectreFile {
 }
 
 impl SpectreFile {
-    /// Extract SpectreFile from a parsed StorageObject.
+    /// Extract `SpectreFile` from a parsed `StorageObject`.
     pub fn from_storage_object(obj: &StorageObject) -> Result<Self, ParseError> {
         // Find m_uid child
         let uid = extract_string_child(obj, "m_uid")?;
@@ -52,7 +52,7 @@ impl SpectreFile {
     }
 }
 
-/// Extract a storage_string child as a String.
+/// Extract a `storage_string` child as a String.
 fn extract_string_child(obj: &StorageObject, name: &str) -> Result<String, ParseError> {
     let child = obj
         .find_child(name)
@@ -61,7 +61,7 @@ fn extract_string_child(obj: &StorageObject, name: &str) -> Result<String, Parse
     // storage_string stores: "size" (size_t) and "data" (char array)
     let data_var = child
         .find_var("data")
-        .ok_or_else(|| ParseError::MissingField(format!("{}.data", name)))?;
+        .ok_or_else(|| ParseError::MissingField(format!("{name}.data")))?;
 
     // Data is null-terminated string bytes
     let end = data_var
@@ -71,10 +71,10 @@ fn extract_string_child(obj: &StorageObject, name: &str) -> Result<String, Parse
         .unwrap_or(data_var.data.len());
 
     String::from_utf8(data_var.data[..end].to_vec())
-        .map_err(|_| ParseError::MissingField(format!("{} (invalid UTF-8)", name)))
+        .map_err(|_| ParseError::MissingField(format!("{name} (invalid UTF-8)")))
 }
 
-/// Extract a storage_vector<double> child as Vec<f64>.
+/// Extract a `storage_vector`<double> child as Vec<f64>.
 fn extract_double_vector_child(obj: &StorageObject, name: &str) -> Result<Vec<f64>, ParseError> {
     let child = obj
         .find_child(name)

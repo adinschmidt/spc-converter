@@ -98,7 +98,7 @@ fn process_file(cli: &Cli, input_path: &PathBuf) -> Result<PathBuf, Box<dyn std:
         }
         if let Some(ref cfg) = spc.config {
             if let Some(raman) = cfg.raman_wavelength {
-                eprintln!("  Raman wavelength: {} nm", raman);
+                eprintln!("  Raman wavelength: {raman} nm");
             }
         }
         if spc.has_raman_shift() {
@@ -170,7 +170,7 @@ fn get_output_path(cli: &Cli, input_path: &PathBuf) -> PathBuf {
         } else {
             // Multiple files: output is a directory
             let filename = input_path.file_stem().unwrap_or_default().to_string_lossy();
-            output.join(format!("{}.{}", filename, extension))
+            output.join(format!("{filename}.{extension}"))
         }
     } else {
         // No output specified: create alongside input

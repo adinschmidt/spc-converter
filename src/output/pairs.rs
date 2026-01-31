@@ -3,7 +3,7 @@
 use crate::spectre::SpcFile;
 use std::io::{self, Write};
 
-/// Write SpcFile as LLM-friendly pairs format.
+/// Write `SpcFile` as LLM-friendly pairs format.
 ///
 /// Format:
 /// ```text
@@ -34,12 +34,11 @@ pub fn write_pairs<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
     writeln!(writer, "# Raman Spectrum")?;
 
     if x_axis_unit.is_empty() {
-        writeln!(writer, "# X-axis: {}, Y-axis: Intensity", x_axis_name)?;
+        writeln!(writer, "# X-axis: {x_axis_name}, Y-axis: Intensity")?;
     } else {
         writeln!(
             writer,
-            "# X-axis: {} ({}), Y-axis: Intensity",
-            x_axis_name, x_axis_unit
+            "# X-axis: {x_axis_name} ({x_axis_unit}), Y-axis: Intensity"
         )?;
     }
 
@@ -58,13 +57,13 @@ pub fn write_pairs<W: Write>(spc: &SpcFile, mut writer: W) -> io::Result<()> {
 
     // Write x,y pairs
     for (x, y) in x_values.iter().zip(spc.data.iter()) {
-        writeln!(writer, "{}, {}", x, y)?;
+        writeln!(writer, "{x}, {y}")?;
     }
 
     Ok(())
 }
 
-/// Write SpcFile as pairs format string.
+/// Write `SpcFile` as pairs format string.
 pub fn to_pairs_string(spc: &SpcFile) -> io::Result<String> {
     let mut buf = Vec::new();
     write_pairs(spc, &mut buf)?;

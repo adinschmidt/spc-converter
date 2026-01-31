@@ -1,4 +1,4 @@
-//! StorageObject reconstruction from binary format.
+//! `StorageObject` reconstruction from binary format.
 
 use super::header::{PackChild, PackHeader, PackVar, ParseError};
 use std::collections::HashMap;
@@ -12,18 +12,18 @@ pub struct Variable {
     pub data: Vec<u8>,
 }
 
-/// Reconstructed StorageObject from binary format.
+/// Reconstructed `StorageObject` from binary format.
 #[derive(Debug, Clone)]
 pub struct StorageObject {
     pub type_name: String,
     pub owner_name: String,
     pub var_name: String,
     pub variables: Vec<Variable>,
-    pub children: Vec<StorageObject>,
+    pub children: Vec<Self>,
 }
 
 impl StorageObject {
-    /// Parse a StorageObject from raw bytes.
+    /// Parse a `StorageObject` from raw bytes.
     pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
         let header = PackHeader::from_bytes(data)?;
 
@@ -176,7 +176,7 @@ impl StorageObject {
             )?;
 
             // Recursively parse child
-            let child_obj = StorageObject::from_bytes(child_data)?;
+            let child_obj = Self::from_bytes(child_data)?;
             children.push(child_obj);
         }
 
@@ -190,16 +190,19 @@ impl StorageObject {
     }
 
     /// Find a variable by name.
+    #[must_use] 
     pub fn find_var(&self, name: &str) -> Option<&Variable> {
         self.variables.iter().find(|v| v.name == name)
     }
 
     /// Find a child object by variable name.
-    pub fn find_child(&self, var_name: &str) -> Option<&StorageObject> {
+    #[must_use] 
+    pub fn find_child(&self, var_name: &str) -> Option<&Self> {
         self.children.iter().find(|c| c.var_name == var_name)
     }
 
     /// Get all variables as a map by name.
+    #[must_use] 
     pub fn vars_by_name(&self) -> HashMap<&str, &Variable> {
         self.variables
             .iter()

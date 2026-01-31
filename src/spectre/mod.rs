@@ -1,4 +1,4 @@
-//! SpectreFile extraction from StorageObject.
+//! `SpectreFile` extraction from `StorageObject`.
 
 mod file;
 mod spc_file;

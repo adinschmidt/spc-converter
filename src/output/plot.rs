@@ -19,6 +19,7 @@ pub struct PlotAxisInfo {
 
 /// Determines the best axis to use for plotting based on available data.
 /// Priority: Raman Shift > Wavelength > Pixel Index
+#[must_use] 
 pub fn select_best_axis(spc: &SpcFile) -> PlotAxisInfo {
     if let Some(ref raman) = spc.raman_shift_axis {
         PlotAxisInfo {
@@ -65,14 +66,14 @@ pub fn write_plot<P: AsRef<Path>>(
     let axis = select_best_axis(spc);
 
     // Calculate data ranges with padding
-    let x_min = axis.values.iter().cloned().fold(f64::INFINITY, f64::min);
+    let x_min = axis.values.iter().copied().fold(f64::INFINITY, f64::min);
     let x_max = axis
         .values
         .iter()
-        .cloned()
+        .copied()
         .fold(f64::NEG_INFINITY, f64::max);
-    let y_min = spc.data.iter().cloned().fold(f64::INFINITY, f64::min);
-    let y_max = spc.data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let y_min = spc.data.iter().copied().fold(f64::INFINITY, f64::min);
+    let y_max = spc.data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
     // Add padding to y-axis
     let y_padding = (y_max - y_min) * 0.05;
@@ -89,7 +90,7 @@ pub fn write_plot<P: AsRef<Path>>(
     // Build title
     let title = if let Some(ref cfg) = spc.config {
         if let Some(laser) = cfg.raman_wavelength {
-            format!("Spectrum ({}nm laser)", laser)
+            format!("Spectrum ({laser}nm laser)")
         } else {
             "Spectrum".to_string()
         }
@@ -101,7 +102,7 @@ pub fn write_plot<P: AsRef<Path>>(
     let root = BitMapBackend::new(output_path.as_ref(), (width, height)).into_drawing_area();
 
     root.fill(&WHITE).map_err(|e: DrawingAreaErrorKind<_>| {
-        io::Error::new(io::ErrorKind::Other, format!("{:?}", e))
+        io::Error::other(format!("{e:?}"))
     })?;
 
     // Build x-axis range (reversed for Raman shift - spectroscopy convention)
@@ -118,7 +119,7 @@ pub fn write_plot<P: AsRef<Path>>(
         .y_label_area_size(70)
         .build_cartesian_2d(x_start..x_end, y_min..y_max)
         .map_err(|e: DrawingAreaErrorKind<_>| {
-            io::Error::new(io::ErrorKind::Other, format!("{:?}", e))
+            io::Error::other(format!("{e:?}"))
         })?;
 
     chart
@@ -129,7 +130,7 @@ pub fn write_plot<P: AsRef<Path>>(
         .label_style(("sans-serif", 12))
         .draw()
         .map_err(|e: DrawingAreaErrorKind<_>| {
-            io::Error::new(io::ErrorKind::Other, format!("{:?}", e))
+            io::Error::other(format!("{e:?}"))
         })?;
 
     // Draw the spectrum line
@@ -143,12 +144,12 @@ pub fn write_plot<P: AsRef<Path>>(
     chart
         .draw_series(LineSeries::new(data_points, &BLUE))
         .map_err(|e: DrawingAreaErrorKind<_>| {
-            io::Error::new(io::ErrorKind::Other, format!("{:?}", e))
+            io::Error::other(format!("{e:?}"))
         })?;
 
     // Render to file
     root.present().map_err(|e: DrawingAreaErrorKind<_>| {
-        io::Error::new(io::ErrorKind::Other, format!("{:?}", e))
+        io::Error::other(format!("{e:?}"))
     })?;
 
     Ok(())
