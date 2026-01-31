@@ -88,15 +88,15 @@ pub fn decrypt(data: &mut [u8], encryption_key: u32, seed: u32, block_size: usiz
     let num_elements = data.len() / 4;
     let key = encryption_key ^ seed;
 
-    // Helper: replicate byte across u32
-    let repmat = |value: u32| -> u32 {
-        let v = value & 0xFF;
+    // Helper: replicate low byte across u32
+    let repmat = |value: usize| -> u32 {
+        let v = u32::try_from(value & 0xFF).unwrap_or(0);
         let v = v | (v << 8);
         let v = v | (v << 16);
         !v
     };
 
-    let mut current_key = key.wrapping_add(repmat(num_elements as u32));
+    let mut current_key = key.wrapping_add(repmat(num_elements));
 
     // Process as u32 words
     let words: &mut [u32] =
@@ -108,7 +108,7 @@ pub fn decrypt(data: &mut [u8], encryption_key: u32, seed: u32, block_size: usiz
             let temp = !words[i];
             words[i] ^= current_key;
             current_key = current_key.wrapping_add(temp);
-            current_key = current_key.wrapping_add(repmat(i as u32));
+            current_key = current_key.wrapping_add(repmat(i));
             i += block_size;
         }
     }
@@ -260,12 +260,26 @@ pub fn unpack_container(data: &[u8]) -> Result<Vec<Vec<u8>>, ParseError> {
     }
 
     // Parse buffer table
-    let table_start = header.buffers_table_ofs as usize;
-    let data_start = header.buffers_data_ofs as usize;
+    let table_start =
+        usize::try_from(header.buffers_table_ofs).map_err(|_| ParseError::InvalidOffset {
+            offset: header.buffers_table_ofs,
+            size: data.len(),
+        })?;
+    let data_start =
+        usize::try_from(header.buffers_data_ofs).map_err(|_| ParseError::InvalidOffset {
+            offset: header.buffers_data_ofs,
+            size: data.len(),
+        })?;
+
+    let num_buffers =
+        usize::try_from(header.num_buffers).map_err(|_| ParseError::InvalidOffset {
+            offset: header.num_buffers,
+            size: data.len(),
+        })?;
 
     let mut buffers = Vec::new();
 
-    for i in 0..header.num_buffers as usize {
+    for i in 0..num_buffers {
         let entry_start = table_start + i * BufferEntry::SIZE;
         let entry_bytes = data
             .get(entry_start..entry_start + BufferEntry::SIZE)
@@ -275,8 +289,18 @@ pub fn unpack_container(data: &[u8]) -> Result<Vec<Vec<u8>>, ParseError> {
             })?;
         let entry = BufferEntry::from_bytes(entry_bytes)?;
 
-        let buf_start = data_start + entry.offset as usize;
-        let buf_end = buf_start + entry.size as usize;
+        let entry_offset =
+            usize::try_from(entry.offset).map_err(|_| ParseError::InvalidOffset {
+                offset: entry.offset,
+                size: data.len(),
+            })?;
+        let entry_size = usize::try_from(entry.size).map_err(|_| ParseError::InvalidOffset {
+            offset: entry.size,
+            size: data.len(),
+        })?;
+
+        let buf_start = data_start + entry_offset;
+        let buf_end = buf_start + entry_size;
 
         if buf_end > data.len() {
             return Err(ParseError::InvalidOffset {

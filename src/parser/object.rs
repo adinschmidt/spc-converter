@@ -31,13 +31,23 @@ impl StorageObject {
         let header = PackHeader::from_bytes(data)?;
 
         // Extract strings section
-        let strings_start = header.strings.offset as usize;
-        let strings_end = strings_start
-            .checked_add(header.strings.size as usize)
-            .ok_or(ParseError::InvalidOffset {
+        let strings_start =
+            usize::try_from(header.strings.offset).map_err(|_| ParseError::InvalidOffset {
+                offset: header.strings.offset,
+                size: data.len(),
+            })?;
+        let strings_size =
+            usize::try_from(header.strings.size).map_err(|_| ParseError::InvalidOffset {
                 offset: header.strings.offset + header.strings.size,
                 size: data.len(),
             })?;
+        let strings_end =
+            strings_start
+                .checked_add(strings_size)
+                .ok_or(ParseError::InvalidOffset {
+                    offset: header.strings.offset + header.strings.size,
+                    size: data.len(),
+                })?;
         let strings_section =
             data.get(strings_start..strings_end)
                 .ok_or(ParseError::InvalidOffset {
@@ -46,14 +56,22 @@ impl StorageObject {
                 })?;
 
         // Extract data section
-        let data_start = header.data.offset as usize;
-        let data_end =
-            data_start
-                .checked_add(header.data.size as usize)
-                .ok_or(ParseError::InvalidOffset {
-                    offset: header.data.offset + header.data.size,
-                    size: data.len(),
-                })?;
+        let data_start =
+            usize::try_from(header.data.offset).map_err(|_| ParseError::InvalidOffset {
+                offset: header.data.offset,
+                size: data.len(),
+            })?;
+        let data_size =
+            usize::try_from(header.data.size).map_err(|_| ParseError::InvalidOffset {
+                offset: header.data.offset + header.data.size,
+                size: data.len(),
+            })?;
+        let data_end = data_start
+            .checked_add(data_size)
+            .ok_or(ParseError::InvalidOffset {
+                offset: header.data.offset + header.data.size,
+                size: data.len(),
+            })?;
         let data_section = data
             .get(data_start..data_end)
             .ok_or(ParseError::InvalidOffset {
@@ -67,14 +85,22 @@ impl StorageObject {
         let var_name = read_string(strings_section, header.name_offset)?;
 
         // Parse variables
-        let vars_start = header.vars.offset as usize;
-        let vars_end =
-            vars_start
-                .checked_add(header.vars.size as usize)
-                .ok_or(ParseError::InvalidOffset {
-                    offset: header.vars.offset + header.vars.size,
-                    size: data.len(),
-                })?;
+        let vars_start =
+            usize::try_from(header.vars.offset).map_err(|_| ParseError::InvalidOffset {
+                offset: header.vars.offset,
+                size: data.len(),
+            })?;
+        let vars_size =
+            usize::try_from(header.vars.size).map_err(|_| ParseError::InvalidOffset {
+                offset: header.vars.offset + header.vars.size,
+                size: data.len(),
+            })?;
+        let vars_end = vars_start
+            .checked_add(vars_size)
+            .ok_or(ParseError::InvalidOffset {
+                offset: header.vars.offset + header.vars.size,
+                size: data.len(),
+            })?;
         let vars_section = data
             .get(vars_start..vars_end)
             .ok_or(ParseError::InvalidOffset {
@@ -82,16 +108,26 @@ impl StorageObject {
                 size: data.len(),
             })?;
 
-        let expected_vars_size = header.num_vars as usize * PackVar::SIZE;
-        if header.vars.size as usize != expected_vars_size {
+        let num_vars = usize::try_from(header.num_vars).map_err(|_| ParseError::InvalidOffset {
+            offset: header.num_vars,
+            size: data.len(),
+        })?;
+        let expected_vars_size =
+            num_vars
+                .checked_mul(PackVar::SIZE)
+                .ok_or(ParseError::InvalidOffset {
+                    offset: header.num_vars,
+                    size: data.len(),
+                })?;
+        if vars_size != expected_vars_size {
             return Err(ParseError::VarCountMismatch {
                 expected: header.num_vars,
-                actual: header.vars.size as usize / PackVar::SIZE,
+                actual: vars_size / PackVar::SIZE,
             });
         }
 
-        let mut variables = Vec::with_capacity(header.num_vars as usize);
-        for i in 0..header.num_vars as usize {
+        let mut variables = Vec::with_capacity(num_vars);
+        for i in 0..num_vars {
             let start = i * PackVar::SIZE;
             let end = start + PackVar::SIZE;
             let var_bytes = vars_section
@@ -106,13 +142,23 @@ impl StorageObject {
             let name = read_string(strings_section, pack_var.name_offset)?;
             let type_name = read_string(strings_section, pack_var.type_offset)?;
 
-            let var_data_start = pack_var.data_offset as usize;
-            let var_data_end = var_data_start
-                .checked_add(pack_var.bytes_size as usize)
-                .ok_or(ParseError::InvalidOffset {
+            let var_data_start =
+                usize::try_from(pack_var.data_offset).map_err(|_| ParseError::InvalidOffset {
+                    offset: pack_var.data_offset,
+                    size: data_section.len(),
+                })?;
+            let var_data_size =
+                usize::try_from(pack_var.bytes_size).map_err(|_| ParseError::InvalidOffset {
                     offset: pack_var.data_offset + pack_var.bytes_size,
                     size: data_section.len(),
                 })?;
+            let var_data_end =
+                var_data_start
+                    .checked_add(var_data_size)
+                    .ok_or(ParseError::InvalidOffset {
+                        offset: pack_var.data_offset + pack_var.bytes_size,
+                        size: data_section.len(),
+                    })?;
             let var_data = data_section
                 .get(var_data_start..var_data_end)
                 .ok_or(ParseError::InvalidOffset {
@@ -130,13 +176,23 @@ impl StorageObject {
         }
 
         // Parse children
-        let children_start = header.children.offset as usize;
-        let children_end = children_start
-            .checked_add(header.children.size as usize)
-            .ok_or(ParseError::InvalidOffset {
+        let children_start =
+            usize::try_from(header.children.offset).map_err(|_| ParseError::InvalidOffset {
+                offset: header.children.offset,
+                size: data.len(),
+            })?;
+        let children_size =
+            usize::try_from(header.children.size).map_err(|_| ParseError::InvalidOffset {
                 offset: header.children.offset + header.children.size,
                 size: data.len(),
             })?;
+        let children_end =
+            children_start
+                .checked_add(children_size)
+                .ok_or(ParseError::InvalidOffset {
+                    offset: header.children.offset + header.children.size,
+                    size: data.len(),
+                })?;
         let children_section =
             data.get(children_start..children_end)
                 .ok_or(ParseError::InvalidOffset {
@@ -144,16 +200,27 @@ impl StorageObject {
                     size: data.len(),
                 })?;
 
-        let expected_children_size = header.num_children as usize * PackChild::SIZE;
-        if header.children.size as usize != expected_children_size {
+        let num_children =
+            usize::try_from(header.num_children).map_err(|_| ParseError::InvalidOffset {
+                offset: header.num_children,
+                size: data.len(),
+            })?;
+        let expected_children_size =
+            num_children
+                .checked_mul(PackChild::SIZE)
+                .ok_or(ParseError::InvalidOffset {
+                    offset: header.num_children,
+                    size: data.len(),
+                })?;
+        if children_size != expected_children_size {
             return Err(ParseError::ChildCountMismatch {
                 expected: header.num_children,
-                actual: header.children.size as usize / PackChild::SIZE,
+                actual: children_size / PackChild::SIZE,
             });
         }
 
-        let mut children = Vec::with_capacity(header.num_children as usize);
-        for i in 0..header.num_children as usize {
+        let mut children = Vec::with_capacity(num_children);
+        for i in 0..num_children {
             let start = i * PackChild::SIZE;
             let end = start + PackChild::SIZE;
             let child_bytes = children_section
@@ -164,13 +231,23 @@ impl StorageObject {
                 })?;
             let pack_child = PackChild::from_bytes(child_bytes)?;
 
-            let child_data_start = pack_child.data_offset as usize;
-            let child_data_end = child_data_start
-                .checked_add(pack_child.size as usize)
-                .ok_or(ParseError::InvalidOffset {
+            let child_data_start =
+                usize::try_from(pack_child.data_offset).map_err(|_| ParseError::InvalidOffset {
+                    offset: pack_child.data_offset,
+                    size: data_section.len(),
+                })?;
+            let child_data_size =
+                usize::try_from(pack_child.size).map_err(|_| ParseError::InvalidOffset {
                     offset: pack_child.data_offset + pack_child.size,
                     size: data_section.len(),
                 })?;
+            let child_data_end =
+                child_data_start
+                    .checked_add(child_data_size)
+                    .ok_or(ParseError::InvalidOffset {
+                        offset: pack_child.data_offset + pack_child.size,
+                        size: data_section.len(),
+                    })?;
             let child_data = data_section.get(child_data_start..child_data_end).ok_or(
                 ParseError::InvalidOffset {
                     offset: pack_child.data_offset + pack_child.size,
@@ -216,7 +293,10 @@ impl StorageObject {
 
 /// Read a null-terminated string from the strings section.
 fn read_string(strings: &[u8], offset: u64) -> Result<String, ParseError> {
-    let start = offset as usize;
+    let start = usize::try_from(offset).map_err(|_| ParseError::InvalidOffset {
+        offset,
+        size: strings.len(),
+    })?;
     if start >= strings.len() {
         return Err(ParseError::InvalidOffset {
             offset,
