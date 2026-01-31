@@ -186,7 +186,7 @@ pub fn rle0_decode(data: &[u8]) -> Vec<u8> {
     let mut i = 0;
 
     while i < data.len() {
-        let occurrence = data[i] as usize;
+        let mut occurrence = data[i] as usize;
         i += 1;
 
         // Check if command byte (0 means read new block size)
@@ -200,27 +200,18 @@ pub fn rle0_decode(data: &[u8]) -> Vec<u8> {
             if i >= data.len() {
                 break;
             }
-            let occurrence = data[i] as usize;
+            occurrence = data[i] as usize;
             i += 1;
-
-            if i + block_size > data.len() {
-                break;
-            }
-            let block = &data[i..i + block_size];
-            for _ in 0..occurrence {
-                result.extend_from_slice(block);
-            }
-            i += block_size;
-        } else {
-            if i + block_size > data.len() {
-                break;
-            }
-            let block = &data[i..i + block_size];
-            for _ in 0..occurrence {
-                result.extend_from_slice(block);
-            }
-            i += block_size;
         }
+
+        if i + block_size > data.len() {
+            break;
+        }
+        let block = &data[i..i + block_size];
+        for _ in 0..occurrence {
+            result.extend_from_slice(block);
+        }
+        i += block_size;
     }
 
     result
@@ -229,11 +220,11 @@ pub fn rle0_decode(data: &[u8]) -> Vec<u8> {
 /// Decode based on encoding type.
 #[must_use]
 pub fn decode(data: &[u8], encoding: u8) -> Vec<u8> {
+    // ENCODING_NONE (0) and unknown encodings are returned as-is.
     match encoding {
-        0 => data.to_vec(),     // ENCODING_NONE
         1 => rle8_decode(data), // ENCODING_RLE8
         2 => rle0_decode(data), // ENCODING_RLE0
-        _ => data.to_vec(),     // Unknown, return as-is
+        _ => data.to_vec(),
     }
 }
 
