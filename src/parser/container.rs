@@ -18,6 +18,10 @@ impl ContainerHeader {
     pub const MAGIC: u32 = 0x53504330; // "0CPS" as stored bytes (reads as "SPC0")
     pub const SIZE: usize = 80; // 4+4+8+8+4+8+10*4 = 80 bytes with reserved
 
+    /// Parse a container header from raw bytes.
+    ///
+    /// # Errors
+    /// Returns [`ParseError::FileTooSmall`] if `data` is shorter than [`Self::SIZE`].
     pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
         if data.len() < Self::SIZE {
             return Err(ParseError::FileTooSmall {
@@ -51,6 +55,10 @@ pub struct BufferEntry {
 impl BufferEntry {
     pub const SIZE: usize = 24; // 1 + 7 padding + 8 + 8 = 24 bytes
 
+    /// Parse a buffer entry from raw bytes.
+    ///
+    /// # Errors
+    /// Returns [`ParseError::FileTooSmall`] if `data` is shorter than [`Self::SIZE`].
     pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
         if data.len() < Self::SIZE {
             return Err(ParseError::FileTooSmall {
@@ -107,7 +115,7 @@ pub fn decrypt(data: &mut [u8], encryption_key: u32, seed: u32, block_size: usiz
 }
 
 /// Compute checksum (for verification).
-#[must_use] 
+#[must_use]
 pub fn checksum(data: &[u8]) -> u32 {
     let mut sum: u32 = 0;
     let mut i = 0;
@@ -134,7 +142,7 @@ pub fn checksum(data: &[u8]) -> u32 {
 }
 
 /// RLE8 decode: pairs of (count, byte).
-#[must_use] 
+#[must_use]
 pub fn rle8_decode(data: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
     let mut i = 0;
@@ -150,7 +158,7 @@ pub fn rle8_decode(data: &[u8]) -> Vec<u8> {
 }
 
 /// RLE0 decode: variable block size RLE.
-#[must_use] 
+#[must_use]
 pub fn rle0_decode(data: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
     let mut block_size: usize = 1;
@@ -198,7 +206,7 @@ pub fn rle0_decode(data: &[u8]) -> Vec<u8> {
 }
 
 /// Decode based on encoding type.
-#[must_use] 
+#[must_use]
 pub fn decode(data: &[u8], encoding: u8) -> Vec<u8> {
     match encoding {
         0 => data.to_vec(),     // ENCODING_NONE
@@ -209,6 +217,10 @@ pub fn decode(data: &[u8], encoding: u8) -> Vec<u8> {
 }
 
 /// Unpack a container: decrypt, decompress, and return `StorageObject` data.
+///
+/// # Errors
+/// Returns a [`ParseError`] if the input does not match the expected container format or if any
+/// contained buffer offsets are invalid.
 pub fn unpack_container(data: &[u8]) -> Result<Vec<Vec<u8>>, ParseError> {
     const ENCRYPTION_KEY: u32 = 0xfeedbeef;
     const BLOCK_SIZE: usize = 4;

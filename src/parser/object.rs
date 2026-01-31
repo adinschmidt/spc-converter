@@ -24,6 +24,9 @@ pub struct StorageObject {
 
 impl StorageObject {
     /// Parse a `StorageObject` from raw bytes.
+    ///
+    /// # Errors
+    /// Returns a [`ParseError`] if the input data is malformed or contains out-of-range offsets.
     pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
         let header = PackHeader::from_bytes(data)?;
 
@@ -190,19 +193,19 @@ impl StorageObject {
     }
 
     /// Find a variable by name.
-    #[must_use] 
+    #[must_use]
     pub fn find_var(&self, name: &str) -> Option<&Variable> {
         self.variables.iter().find(|v| v.name == name)
     }
 
     /// Find a child object by variable name.
-    #[must_use] 
+    #[must_use]
     pub fn find_child(&self, var_name: &str) -> Option<&Self> {
         self.children.iter().find(|c| c.var_name == var_name)
     }
 
     /// Get all variables as a map by name.
-    #[must_use] 
+    #[must_use]
     pub fn vars_by_name(&self) -> HashMap<&str, &Variable> {
         self.variables
             .iter()

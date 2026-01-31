@@ -21,6 +21,9 @@ pub struct JsonMetadata {
 }
 
 /// Write `SpectreFile` as JSON to a writer.
+///
+/// # Errors
+/// Returns an error if serialization fails or if writing to `writer` fails.
 pub fn write_json<W: Write>(
     spectre: &SpectreFile,
     writer: W,
@@ -45,6 +48,9 @@ pub fn write_json<W: Write>(
 }
 
 /// Write `SpectreFile` as JSON string.
+///
+/// # Errors
+/// Returns an error if serialization fails.
 pub fn to_json_string(spectre: &SpectreFile, pretty: bool) -> Result<String, serde_json::Error> {
     let output = JsonOutput {
         uid: &spectre.uid,
@@ -65,6 +71,9 @@ pub fn to_json_string(spectre: &SpectreFile, pretty: bool) -> Result<String, ser
 }
 
 /// Write `SpcFile` (with calibration) as JSON to a writer.
+///
+/// # Errors
+/// Returns an error if serialization fails or if writing to `writer` fails.
 pub fn write_json_spc<W: Write>(
     spc: &SpcFile,
     writer: W,
@@ -79,6 +88,9 @@ pub fn write_json_spc<W: Write>(
 }
 
 /// Write `SpcFile` as JSON string.
+///
+/// # Errors
+/// Returns an error if serialization fails.
 pub fn to_json_string_spc(spc: &SpcFile, pretty: bool) -> Result<String, serde_json::Error> {
     if pretty {
         serde_json::to_string_pretty(spc)

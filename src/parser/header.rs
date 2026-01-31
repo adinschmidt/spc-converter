@@ -43,6 +43,9 @@ impl BufferSection {
     pub const SIZE: usize = 16;
 
     /// Read from 16 bytes at the given position.
+    ///
+    /// # Errors
+    /// Returns [`ParseError::FileTooSmall`] if `data` is shorter than [`Self::SIZE`].
     pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
         if data.len() < Self::SIZE {
             return Err(ParseError::FileTooSmall {
@@ -76,6 +79,9 @@ impl PackHeader {
     pub const SIZE: usize = 104; // 40 bytes + 4×16 bytes for buffer sections
 
     /// Parse header from bytes.
+    ///
+    /// # Errors
+    /// Returns [`ParseError::FileTooSmall`] if `data` is shorter than [`Self::SIZE`].
     pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
         if data.len() < Self::SIZE {
             return Err(ParseError::FileTooSmall {
@@ -124,6 +130,9 @@ impl PackVar {
     pub const SIZE: usize = 40;
 
     /// Parse from bytes.
+    ///
+    /// # Errors
+    /// Returns [`ParseError::FileTooSmall`] if `data` is shorter than [`Self::SIZE`].
     pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
         if data.len() < Self::SIZE {
             return Err(ParseError::FileTooSmall {
@@ -155,6 +164,9 @@ impl PackChild {
     pub const SIZE: usize = 32;
 
     /// Parse from bytes.
+    ///
+    /// # Errors
+    /// Returns [`ParseError::FileTooSmall`] if `data` is shorter than [`Self::SIZE`].
     pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
         if data.len() < Self::SIZE {
             return Err(ParseError::FileTooSmall {

@@ -20,7 +20,7 @@ pub struct Calibration {
 impl Calibration {
     /// Convert pixel index (0 to n-1) to wavelength (nm).
     /// Uses Legendre polynomial expansion as defined in the Spectrum Analyzer Suite.
-    #[must_use] 
+    #[must_use]
     pub fn pixel_to_wavelength(&self, pixel: usize, num_pixels: usize) -> Option<f64> {
         if self.coefficients.len() != 4 || num_pixels == 0 {
             return None;
@@ -44,7 +44,7 @@ impl Calibration {
     }
 
     /// Convert pixel index to Raman shift (cm⁻¹) given laser wavelength.
-    #[must_use] 
+    #[must_use]
     pub fn pixel_to_raman_shift(
         &self,
         pixel: usize,
@@ -57,7 +57,7 @@ impl Calibration {
     }
 
     /// Generate wavelength axis for all pixels.
-    #[must_use] 
+    #[must_use]
     pub fn generate_wavelength_axis(&self, num_pixels: usize) -> Option<Vec<f64>> {
         if self.coefficients.len() != 4 || num_pixels == 0 {
             return None;
@@ -69,7 +69,7 @@ impl Calibration {
     }
 
     /// Generate Raman shift axis for all pixels.
-    #[must_use] 
+    #[must_use]
     pub fn generate_raman_shift_axis(
         &self,
         num_pixels: usize,
@@ -177,6 +177,10 @@ pub struct SpcFile {
 
 impl SpcFile {
     /// Parse from raw file bytes (handles container encryption/compression).
+    ///
+    /// # Errors
+    /// Returns a [`ParseError`] if the container cannot be unpacked or if required objects/fields
+    /// are missing.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, ParseError> {
         // First unpack the container (decrypt + decompress)
         let buffers = unpack_container(bytes)?;
@@ -246,19 +250,22 @@ impl SpcFile {
     }
 
     /// Read from a file path.
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be read or if parsing fails.
     pub fn from_file(path: &std::path::Path) -> Result<Self, ParseError> {
         let bytes = std::fs::read(path)?;
         Self::from_bytes(&bytes)
     }
 
     /// Check if this file has calibration data.
-    #[must_use] 
+    #[must_use]
     pub const fn has_calibration(&self) -> bool {
         self.calibration.is_some()
     }
 
     /// Check if this file has Raman shift data.
-    #[must_use] 
+    #[must_use]
     pub const fn has_raman_shift(&self) -> bool {
         self.raman_shift_axis.is_some()
     }

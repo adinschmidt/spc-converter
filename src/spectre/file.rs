@@ -16,6 +16,9 @@ pub struct SpectreFile {
 
 impl SpectreFile {
     /// Extract `SpectreFile` from a parsed `StorageObject`.
+    ///
+    /// # Errors
+    /// Returns a [`ParseError`] if required fields are missing or if data types are unexpected.
     pub fn from_storage_object(obj: &StorageObject) -> Result<Self, ParseError> {
         // Find m_uid child
         let uid = extract_string_child(obj, "m_uid")?;
@@ -30,6 +33,10 @@ impl SpectreFile {
     }
 
     /// Parse from raw file bytes (handles container encryption/compression).
+    ///
+    /// # Errors
+    /// Returns a [`ParseError`] if the container cannot be unpacked or if the embedded object
+    /// cannot be parsed.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, ParseError> {
         // First unpack the container (decrypt + decompress)
         let buffers = crate::parser::unpack_container(bytes)?;
@@ -46,6 +53,9 @@ impl SpectreFile {
     }
 
     /// Read from a file path.
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be read or if parsing fails.
     pub fn from_file(path: &std::path::Path) -> Result<Self, ParseError> {
         let bytes = std::fs::read(path)?;
         Self::from_bytes(&bytes)

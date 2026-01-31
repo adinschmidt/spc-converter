@@ -19,7 +19,7 @@ pub struct PlotAxisInfo {
 
 /// Determines the best axis to use for plotting based on available data.
 /// Priority: Raman Shift > Wavelength > Pixel Index
-#[must_use] 
+#[must_use]
 pub fn select_best_axis(spc: &SpcFile) -> PlotAxisInfo {
     if let Some(ref raman) = spc.raman_shift_axis {
         PlotAxisInfo {
@@ -57,6 +57,9 @@ pub fn select_best_axis(spc: &SpcFile) -> PlotAxisInfo {
 /// * `output_path` - Output path for the PNG file
 /// * `width` - Image width in pixels (default: 1200)
 /// * `height` - Image height in pixels (default: 600)
+///
+/// # Errors
+/// Returns an error if the image cannot be written or if plot rendering fails.
 pub fn write_plot<P: AsRef<Path>>(
     spc: &SpcFile,
     output_path: P,
@@ -101,9 +104,8 @@ pub fn write_plot<P: AsRef<Path>>(
     // Create the chart
     let root = BitMapBackend::new(output_path.as_ref(), (width, height)).into_drawing_area();
 
-    root.fill(&WHITE).map_err(|e: DrawingAreaErrorKind<_>| {
-        io::Error::other(format!("{e:?}"))
-    })?;
+    root.fill(&WHITE)
+        .map_err(|e: DrawingAreaErrorKind<_>| io::Error::other(format!("{e:?}")))?;
 
     // Build x-axis range (reversed for Raman shift - spectroscopy convention)
     let (x_start, x_end) = if axis.reversed {
@@ -118,9 +120,7 @@ pub fn write_plot<P: AsRef<Path>>(
         .x_label_area_size(50)
         .y_label_area_size(70)
         .build_cartesian_2d(x_start..x_end, y_min..y_max)
-        .map_err(|e: DrawingAreaErrorKind<_>| {
-            io::Error::other(format!("{e:?}"))
-        })?;
+        .map_err(|e: DrawingAreaErrorKind<_>| io::Error::other(format!("{e:?}")))?;
 
     chart
         .configure_mesh()
@@ -129,9 +129,7 @@ pub fn write_plot<P: AsRef<Path>>(
         .axis_desc_style(("sans-serif", 16))
         .label_style(("sans-serif", 12))
         .draw()
-        .map_err(|e: DrawingAreaErrorKind<_>| {
-            io::Error::other(format!("{e:?}"))
-        })?;
+        .map_err(|e: DrawingAreaErrorKind<_>| io::Error::other(format!("{e:?}")))?;
 
     // Draw the spectrum line
     let data_points: Vec<(f64, f64)> = axis
@@ -143,19 +141,19 @@ pub fn write_plot<P: AsRef<Path>>(
 
     chart
         .draw_series(LineSeries::new(data_points, &BLUE))
-        .map_err(|e: DrawingAreaErrorKind<_>| {
-            io::Error::other(format!("{e:?}"))
-        })?;
+        .map_err(|e: DrawingAreaErrorKind<_>| io::Error::other(format!("{e:?}")))?;
 
     // Render to file
-    root.present().map_err(|e: DrawingAreaErrorKind<_>| {
-        io::Error::other(format!("{e:?}"))
-    })?;
+    root.present()
+        .map_err(|e: DrawingAreaErrorKind<_>| io::Error::other(format!("{e:?}")))?;
 
     Ok(())
 }
 
 /// Generate a PNG plot with default dimensions (1200x600).
+///
+/// # Errors
+/// Returns any error from [`write_plot`].
 pub fn write_plot_default<P: AsRef<Path>>(spc: &SpcFile, output_path: P) -> io::Result<()> {
     write_plot(spc, output_path, 1200, 600)
 }
