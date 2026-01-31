@@ -20,6 +20,7 @@ pub struct PlotAxisInfo {
 /// Determines the best axis to use for plotting based on available data.
 /// Priority: Raman Shift > Wavelength > Pixel Index
 #[must_use]
+#[allow(clippy::option_if_let_else)]
 pub fn select_best_axis(spc: &SpcFile) -> PlotAxisInfo {
     if let Some(ref raman) = spc.raman_shift_axis {
         PlotAxisInfo {
@@ -91,15 +92,14 @@ pub fn write_plot<P: AsRef<Path>>(
     };
 
     // Build title
-    let title = if let Some(ref cfg) = spc.config {
-        if let Some(laser) = cfg.raman_wavelength {
-            format!("Spectrum ({laser}nm laser)")
-        } else {
-            "Spectrum".to_string()
-        }
-    } else {
-        "Spectrum".to_string()
-    };
+    let title = spc
+        .config
+        .as_ref()
+        .and_then(|cfg| cfg.raman_wavelength)
+        .map_or_else(
+            || "Spectrum".to_string(),
+            |laser| format!("Spectrum ({laser}nm laser)"),
+        );
 
     // Create the chart
     let root = BitMapBackend::new(output_path.as_ref(), (width, height)).into_drawing_area();
