@@ -59,11 +59,9 @@ impl Calibration {
             return None;
         }
 
-        let axis: Vec<f64> = (0..num_pixels)
-            .map(|i| self.pixel_to_wavelength(i, num_pixels).unwrap())
-            .collect();
-
-        Some(axis)
+        (0..num_pixels)
+            .map(|i| self.pixel_to_wavelength(i, num_pixels))
+            .collect()
     }
 
     /// Generate Raman shift axis for all pixels.
@@ -76,14 +74,9 @@ impl Calibration {
             return None;
         }
 
-        let axis: Vec<f64> = (0..num_pixels)
-            .map(|i| {
-                self.pixel_to_raman_shift(i, num_pixels, laser_wavelength)
-                    .unwrap()
-            })
-            .collect();
-
-        Some(axis)
+        (0..num_pixels)
+            .map(|i| self.pixel_to_raman_shift(i, num_pixels, laser_wavelength))
+            .collect()
     }
 }
 
