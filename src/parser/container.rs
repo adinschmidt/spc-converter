@@ -98,15 +98,36 @@ pub fn decrypt(data: &mut [u8], encryption_key: u32, seed: u32, block_size: usiz
 
     let mut current_key = key.wrapping_add(repmat(num_elements));
 
-    // Process as u32 words
-    let words: &mut [u32] =
-        unsafe { std::slice::from_raw_parts_mut(data.as_mut_ptr().cast::<u32>(), num_elements) };
+    let (word_bytes, _) = data.split_at_mut(num_elements * 4);
+    // SAFETY: We only ever treat the bytes as `u32` values, which accept any bit pattern.
+    // We also only take the fast path when the whole buffer is aligned, preserving the
+    // original 4-byte chunk boundaries.
+    let (prefix, words, suffix) = unsafe { word_bytes.align_to_mut::<u32>() };
 
+    if prefix.is_empty() && suffix.is_empty() {
+        for j in 0..block_size {
+            let mut i = j;
+            while i < num_elements {
+                let word = u32::from_le(words[i]);
+                let temp = !word;
+                words[i] = (word ^ current_key).to_le();
+                current_key = current_key.wrapping_add(temp);
+                current_key = current_key.wrapping_add(repmat(i));
+                i += block_size;
+            }
+        }
+        return;
+    }
+
+    // Slow path for unaligned buffers: decode/encode each u32 as LE bytes.
     for j in 0..block_size {
         let mut i = j;
         while i < num_elements {
-            let temp = !words[i];
-            words[i] ^= current_key;
+            let start = i * 4;
+            let chunk = &mut word_bytes[start..start + 4];
+            let word = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+            let temp = !word;
+            chunk.copy_from_slice(&(word ^ current_key).to_le_bytes());
             current_key = current_key.wrapping_add(temp);
             current_key = current_key.wrapping_add(repmat(i));
             i += block_size;
