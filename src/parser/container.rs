@@ -1,6 +1,7 @@
 //! Container layer: encryption and compression wrapper.
 
 use super::header::ParseError;
+use super::{read_u16_le, read_u32_le, read_u64_le};
 
 /// Container header (packed, 80 bytes total with alignment).
 #[derive(Debug)]
@@ -26,13 +27,13 @@ impl ContainerHeader {
         }
 
         Ok(Self {
-            ident: u32::from_le_bytes(data[0..4].try_into().unwrap()),
-            checksum: u32::from_le_bytes(data[4..8].try_into().unwrap()),
-            num_buffers: u64::from_le_bytes(data[8..16].try_into().unwrap()),
-            buffers_table_ofs: u64::from_le_bytes(data[16..24].try_into().unwrap()),
-            seed: u32::from_le_bytes(data[24..28].try_into().unwrap()),
+            ident: read_u32_le(data, 0)?,
+            checksum: read_u32_le(data, 4)?,
+            num_buffers: read_u64_le(data, 8)?,
+            buffers_table_ofs: read_u64_le(data, 16)?,
+            seed: read_u32_le(data, 24)?,
             // Note: bytes 28-32 have padding due to alignment
-            buffers_data_ofs: u64::from_le_bytes(data[32..40].try_into().unwrap()),
+            buffers_data_ofs: read_u64_le(data, 32)?,
             // Reserved: 40-80
         })
     }
@@ -50,13 +51,23 @@ pub struct BufferEntry {
 impl BufferEntry {
     pub const SIZE: usize = 24; // 1 + 7 padding + 8 + 8 = 24 bytes
 
-    pub fn from_bytes(data: &[u8]) -> Self {
-        Self {
-            encoding: data[0],
-            // 7 bytes padding at 1-7
-            offset: u64::from_le_bytes(data[8..16].try_into().unwrap()),
-            size: u64::from_le_bytes(data[16..24].try_into().unwrap()),
+    pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
+        if data.len() < Self::SIZE {
+            return Err(ParseError::FileTooSmall {
+                expected: Self::SIZE,
+                actual: data.len(),
+            });
         }
+
+        Ok(Self {
+            encoding: *data.get(0).ok_or(ParseError::FileTooSmall {
+                expected: 1,
+                actual: data.len(),
+            })?,
+            // 7 bytes padding at 1-7
+            offset: read_u64_le(data, 8)?,
+            size: read_u64_le(data, 16)?,
+        })
     }
 }
 
@@ -101,15 +112,13 @@ pub fn checksum(data: &[u8]) -> u32 {
     let mut i = 0;
 
     // Add u32s
-    while i + 4 <= data.len() {
-        let val = u32::from_le_bytes(data[i..i + 4].try_into().unwrap());
+    while let Ok(val) = read_u32_le(data, i) {
         sum = sum.wrapping_add(!val);
         i += 4;
     }
 
     // Add u16s
-    while i + 2 <= data.len() {
-        let val = u16::from_le_bytes(data[i..i + 2].try_into().unwrap());
+    while let Ok(val) = read_u16_le(data, i) {
         sum = sum.wrapping_add(!val as u32);
         i += 2;
     }
@@ -242,14 +251,13 @@ pub fn unpack_container(data: &[u8]) -> Result<Vec<Vec<u8>>, ParseError> {
 
     for i in 0..header.num_buffers as usize {
         let entry_start = table_start + i * BufferEntry::SIZE;
-        if entry_start + BufferEntry::SIZE > data.len() {
-            return Err(ParseError::InvalidOffset {
+        let entry_bytes = data
+            .get(entry_start..entry_start + BufferEntry::SIZE)
+            .ok_or(ParseError::InvalidOffset {
                 offset: entry_start as u64,
                 size: data.len(),
-            });
-        }
-
-        let entry = BufferEntry::from_bytes(&data[entry_start..]);
+            })?;
+        let entry = BufferEntry::from_bytes(entry_bytes)?;
 
         let buf_start = data_start + entry.offset as usize;
         let buf_end = buf_start + entry.size as usize;

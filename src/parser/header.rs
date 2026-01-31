@@ -2,6 +2,8 @@
 
 use thiserror::Error;
 
+use super::read_u64_le;
+
 /// Errors that can occur during parsing.
 #[derive(Error, Debug)]
 pub enum ParseError {
@@ -38,12 +40,21 @@ pub struct BufferSection {
 }
 
 impl BufferSection {
+    pub const SIZE: usize = 16;
+
     /// Read from 16 bytes at the given position.
-    pub fn from_bytes(data: &[u8]) -> Self {
-        Self {
-            offset: u64::from_le_bytes(data[0..8].try_into().unwrap()),
-            size: u64::from_le_bytes(data[8..16].try_into().unwrap()),
+    pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
+        if data.len() < Self::SIZE {
+            return Err(ParseError::FileTooSmall {
+                expected: Self::SIZE,
+                actual: data.len(),
+            });
         }
+
+        Ok(Self {
+            offset: read_u64_le(data, 0)?,
+            size: read_u64_le(data, 8)?,
+        })
     }
 }
 
@@ -74,15 +85,27 @@ impl PackHeader {
         }
 
         Ok(Self {
-            type_name_offset: u64::from_le_bytes(data[0..8].try_into().unwrap()),
-            owner_offset: u64::from_le_bytes(data[8..16].try_into().unwrap()),
-            name_offset: u64::from_le_bytes(data[16..24].try_into().unwrap()),
-            num_vars: u64::from_le_bytes(data[24..32].try_into().unwrap()),
-            num_children: u64::from_le_bytes(data[32..40].try_into().unwrap()),
-            strings: BufferSection::from_bytes(&data[40..56]),
-            vars: BufferSection::from_bytes(&data[56..72]),
-            children: BufferSection::from_bytes(&data[72..88]),
-            data: BufferSection::from_bytes(&data[88..104]),
+            type_name_offset: read_u64_le(data, 0)?,
+            owner_offset: read_u64_le(data, 8)?,
+            name_offset: read_u64_le(data, 16)?,
+            num_vars: read_u64_le(data, 24)?,
+            num_children: read_u64_le(data, 32)?,
+            strings: BufferSection {
+                offset: read_u64_le(data, 40)?,
+                size: read_u64_le(data, 48)?,
+            },
+            vars: BufferSection {
+                offset: read_u64_le(data, 56)?,
+                size: read_u64_le(data, 64)?,
+            },
+            children: BufferSection {
+                offset: read_u64_le(data, 72)?,
+                size: read_u64_le(data, 80)?,
+            },
+            data: BufferSection {
+                offset: read_u64_le(data, 88)?,
+                size: read_u64_le(data, 96)?,
+            },
         })
     }
 }
@@ -101,14 +124,21 @@ impl PackVar {
     pub const SIZE: usize = 40;
 
     /// Parse from bytes.
-    pub fn from_bytes(data: &[u8]) -> Self {
-        Self {
-            owner_offset: u64::from_le_bytes(data[0..8].try_into().unwrap()),
-            name_offset: u64::from_le_bytes(data[8..16].try_into().unwrap()),
-            type_offset: u64::from_le_bytes(data[16..24].try_into().unwrap()),
-            data_offset: u64::from_le_bytes(data[24..32].try_into().unwrap()),
-            bytes_size: u64::from_le_bytes(data[32..40].try_into().unwrap()),
+    pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
+        if data.len() < Self::SIZE {
+            return Err(ParseError::FileTooSmall {
+                expected: Self::SIZE,
+                actual: data.len(),
+            });
         }
+
+        Ok(Self {
+            owner_offset: read_u64_le(data, 0)?,
+            name_offset: read_u64_le(data, 8)?,
+            type_offset: read_u64_le(data, 16)?,
+            data_offset: read_u64_le(data, 24)?,
+            bytes_size: read_u64_le(data, 32)?,
+        })
     }
 }
 
@@ -125,12 +155,19 @@ impl PackChild {
     pub const SIZE: usize = 32;
 
     /// Parse from bytes.
-    pub fn from_bytes(data: &[u8]) -> Self {
-        Self {
-            owner_offset: u64::from_le_bytes(data[0..8].try_into().unwrap()),
-            name_offset: u64::from_le_bytes(data[8..16].try_into().unwrap()),
-            data_offset: u64::from_le_bytes(data[16..24].try_into().unwrap()),
-            size: u64::from_le_bytes(data[24..32].try_into().unwrap()),
+    pub fn from_bytes(data: &[u8]) -> Result<Self, ParseError> {
+        if data.len() < Self::SIZE {
+            return Err(ParseError::FileTooSmall {
+                expected: Self::SIZE,
+                actual: data.len(),
+            });
         }
+
+        Ok(Self {
+            owner_offset: read_u64_le(data, 0)?,
+            name_offset: read_u64_le(data, 8)?,
+            data_offset: read_u64_le(data, 16)?,
+            size: read_u64_le(data, 24)?,
+        })
     }
 }

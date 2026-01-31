@@ -294,14 +294,7 @@ fn extract_double_vector(obj: &StorageObject) -> Result<Vec<f64>, ParseError> {
     let mut values = Vec::with_capacity(obj.variables.len());
 
     for var in &obj.variables {
-        if var.data.len() != 8 {
-            return Err(ParseError::TypeMismatch {
-                expected: "double (8 bytes)".to_string(),
-                actual: format!("{} bytes", var.data.len()),
-            });
-        }
-
-        let value = f64::from_le_bytes(var.data[..8].try_into().unwrap());
+        let value = read_f64_le(&var.data)?;
         values.push(value);
     }
 
@@ -323,7 +316,7 @@ fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
 
             if data_var.data.len() == 8 {
                 // Double value
-                let value = f64::from_le_bytes(data_var.data[..8].try_into().unwrap());
+                let value = read_f64_le(&data_var.data)?;
                 match name {
                     "raman_wavelength" => config.raman_wavelength = Some(value),
                     "exposure" => config.exposure = Some(value),
@@ -335,7 +328,7 @@ fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
                 }
             } else if data_var.data.len() == 4 {
                 // Int32 value
-                let value = i32::from_le_bytes(data_var.data[..4].try_into().unwrap());
+                let value = read_i32_le(&data_var.data)?;
                 match name {
                     "smoothing" => config.smoothing = Some(value),
                     "average" => config.average = Some(value),
@@ -365,7 +358,7 @@ fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
     // Also check variables on the object itself (for simpler storage)
     for var in &obj.variables {
         if var.data.len() == 8 {
-            let value = f64::from_le_bytes(var.data[..8].try_into().unwrap());
+            let value = read_f64_le(&var.data)?;
             if var.name == "raman_wavelength" && config.raman_wavelength.is_none() {
                 config.raman_wavelength = Some(value);
             }
@@ -373,4 +366,20 @@ fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
     }
 
     Ok(config)
+}
+
+fn read_f64_le(data: &[u8]) -> Result<f64, ParseError> {
+    let bytes: [u8; 8] = data.try_into().map_err(|_| ParseError::TypeMismatch {
+        expected: "double (8 bytes)".to_string(),
+        actual: format!("{} bytes", data.len()),
+    })?;
+    Ok(f64::from_le_bytes(bytes))
+}
+
+fn read_i32_le(data: &[u8]) -> Result<i32, ParseError> {
+    let bytes: [u8; 4] = data.try_into().map_err(|_| ParseError::TypeMismatch {
+        expected: "int32 (4 bytes)".to_string(),
+        actual: format!("{} bytes", data.len()),
+    })?;
+    Ok(i32::from_le_bytes(bytes))
 }

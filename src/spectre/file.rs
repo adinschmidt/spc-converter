@@ -85,18 +85,19 @@ fn extract_double_vector_child(obj: &StorageObject, name: &str) -> Result<Vec<f6
     let mut values = Vec::with_capacity(child.variables.len());
 
     for var in &child.variables {
-        if var.data.len() != 8 {
-            return Err(ParseError::TypeMismatch {
-                expected: "double (8 bytes)".to_string(),
-                actual: format!("{} bytes", var.data.len()),
-            });
-        }
-
-        let value = f64::from_le_bytes(var.data[..8].try_into().unwrap());
+        let value = read_f64_le(&var.data)?;
         values.push(value);
     }
 
     Ok(values)
+}
+
+fn read_f64_le(data: &[u8]) -> Result<f64, ParseError> {
+    let bytes: [u8; 8] = data.try_into().map_err(|_| ParseError::TypeMismatch {
+        expected: "double (8 bytes)".to_string(),
+        actual: format!("{} bytes", data.len()),
+    })?;
+    Ok(f64::from_le_bytes(bytes))
 }
 
 #[cfg(test)]
