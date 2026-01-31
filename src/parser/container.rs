@@ -15,7 +15,7 @@ pub struct ContainerHeader {
 }
 
 impl ContainerHeader {
-    pub const MAGIC: u32 = 0x53504330; // "0CPS" as stored bytes (reads as "SPC0")
+    pub const MAGIC: u32 = 0x5350_4330; // "0CPS" as stored bytes (reads as "SPC0")
     pub const SIZE: usize = 80; // 4+4+8+8+4+8+10*4 = 80 bytes with reserved
 
     /// Parse a container header from raw bytes.
@@ -222,7 +222,7 @@ pub fn decode(data: &[u8], encoding: u8) -> Vec<u8> {
 /// Returns a [`ParseError`] if the input does not match the expected container format or if any
 /// contained buffer offsets are invalid.
 pub fn unpack_container(data: &[u8]) -> Result<Vec<Vec<u8>>, ParseError> {
-    const ENCRYPTION_KEY: u32 = 0xfeedbeef;
+    const ENCRYPTION_KEY: u32 = 0xfeed_beef;
     const BLOCK_SIZE: usize = 4;
 
     let header = ContainerHeader::from_bytes(data)?;
