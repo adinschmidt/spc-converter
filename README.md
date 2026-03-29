@@ -150,3 +150,11 @@ For a deep dive into the binary format internals, see [spc.md](spc.md).
 The file format specification in [spc.md](spc.md) was derived from the [Spectrum Analyzer Suite](https://www.open-raman.org/build/software/) source code, which is licensed under the **CERN Open Hardware Licence Version 2 - Weakly Reciprocal (CERN-OHL-W v2)**.
 
 See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for the full license text.
+
+## Images
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch;">
+  <img src="https://github.com/user-attachments/assets/fd1f8ede-1923-4950-80b8-9963258fdf46" style="flex: 1 1 200px; height: 200px; object-fit: cover;">
+  <img src="https://github.com/user-attachments/assets/32686bca-aac5-4942-a8f0-27a749f783e5" style="flex: 1 1 200px; height: 200px; object-fit: cover;">
+  <img src="https://github.com/user-attachments/assets/dc50ab0f-1edd-43e5-8bd1-0d2cff76b89c" style="flex: 1 1 200px; height: 200px; object-fit: cover;">
+</div>
+
