@@ -28,13 +28,14 @@ The header is **not encrypted**. Everything after the header (offset `0x50`) is 
 | 0x18   | 4    | uint32 | Encryption seed. |
 | 0x1C   | 4    | -      | Padding (alignment to 8 bytes). |
 | 0x20   | 8    | uint64 | Offset to buffers data region (from file start). |
-| 0x28   | 40   | uint32[10] | Reserved (typically zero). |
+| 0x28   | 40   | uint32[10] | Reserved. Writer-created files zero this field, but parsers should treat it as opaque. |
 
 **Note**: The file size is *not stored* in the header; use the actual file length.
 
 ### 1.2 Checksum
 
-The checksum is a ones-complement sum (with ones-complement input) over the **entire decrypted file**.
+The checksum is a ones-complement sum, with ones-complement input, over the **entire decrypted file**.
+All arithmetic is `uint32` arithmetic with wraparound.
 
 Algorithm (pseudocode):
 
@@ -44,6 +45,10 @@ Algorithm (pseudocode):
    * then remaining `uint16`,
    * then remaining bytes.
 3. Return `~sum`.
+
+For the `uint16` and `uint8` tail cases, the zero-extended value is promoted before `~`.
+Therefore a tail `uint16` contributes `~uint32(0x0000XXXX)`, and a tail byte contributes `~uint32(0x000000XX)`, not a narrow 16-bit or 8-bit complement.
+In non-C/C++ implementations, mask each `~` result and each addition to `uint32`.
 
 The checksum is computed **before encryption** when writing the file. Therefore, when verifying:
 
@@ -55,6 +60,8 @@ The checksum is computed **before encryption** when writing the file. Therefore,
 
 The file body (everything after the 80-byte header) is encrypted in-place as an array of `uint32`.
 The body is padded so its length is a multiple of 4 bytes.
+All operations below are `uint32` operations with wraparound modulo `2^32`.
+In languages without fixed-width unsigned overflow, mask after `~`, XOR, and additions.
 
 Constants used by the suite:
 
@@ -63,18 +70,19 @@ Constants used by the suite:
 
 Helper function:
 
-* `repmat(x) = ~((x & 0xFF) * 0x01010101)` (replicate low byte across a `u32` then invert)
+* `repmat(x) = ~((x & 0xFF) * 0x01010101) & 0xffffffff`
+  (replicate low byte across a `u32`, then invert as a `uint32`)
 
 Decryption (what you need for parsing):
 
 1. Interpret the encrypted body as `num_words = body_len / 4` words.
-2. Initialize `key = (0xFEEDBEEF ^ seed) + repmat(num_words)`.
+2. Initialize `key = ((0xFEEDBEEF ^ seed) + repmat(num_words)) & 0xffffffff`.
 3. For `j = 0..block_size-1`:
    * For `i = j; i < num_words; i += block_size`:
-     1. `temp = ~word[i]` (this is based on the **ciphertext** word)
-     2. `word[i] ^= key`
-     3. `key += temp`
-     4. `key += repmat(i)`
+     1. `temp = ~word[i] & 0xffffffff` (this is based on the **ciphertext** word)
+     2. `word[i] = (word[i] ^ key) & 0xffffffff`
+     3. `key = (key + temp) & 0xffffffff`
+     4. `key = (key + repmat(i)) & 0xffffffff`
 
 Encryption uses the same structure, but the key update uses the complemented **post-XOR** word instead.
 
@@ -253,18 +261,35 @@ Where $P_k(x)$ are the Legendre polynomials:
 
 ### 3.3 Buffer: `"config"` (optional)
 
-If present, the `config` buffer stores configuration parameters from `wndParametersDialog`.
-Each parameter is stored as a child object using the `dynamic_var<T>` wrapper.
+If present, the `config` buffer is a top-level `StorageObject("", "config")`.
+Its type name is `typeid(wndParametersDialog).name()`.
+
+The individual configuration parameters are not top-level variables.
+Each parameter is stored as a child object:
+
+* Child owner: `typeid(wndParametersDialog).name()`
+* Child name: the field name, e.g. `"smoothing"`, `"raman_wavelength"`, `"axis"`
+* Child type name: `typeid(dynamic_var<T>).name()`
 
 **`dynamic_var<T>` encoding**:
 
-For primitive types (int, double, bool), `dynamic_var<T>` stores:
+For primitive and enum-like stored values, `dynamic_var<T>` stores:
 * Type name: `typeid(dynamic_var<T>).name()` (e.g. `"class dynamic_var<double>"` on MSVC)
 * Child object: None
 * Variable `"data"` with:
   * Owner: `""`
-  * Type: `typeid(T).name()` (e.g. `"double"`, `"int"`, `"bool"`)
-  * Data: The raw bytes of the value
+  * Type: `typeid(T).name()` (e.g. `"double"`, `"int"`, `"bool"`, or the MSVC type name for `AxisType`)
+  * Size: `sizeof(T)`
+  * Data: raw bytes of the value as written by the little-endian MSVC build
+
+Expected MSVC payload sizes in this format:
+
+| Stored type | Payload size | Notes |
+|-------------|--------------|-------|
+| `int` | 4 bytes | Signed integer |
+| `double` | 8 bytes | IEEE-754 binary64 |
+| `bool` | 1 byte | MSVC `bool` object representation |
+| `AxisType` | 4 bytes | Raw enum bytes; default enum-class underlying type is `int` |
 
 **Stored fields** (as defined in `camconfig.cpp`):
 
@@ -279,11 +304,13 @@ For primitive types (int, double, bool), `dynamic_var<T>` stores:
 | `medfilt` | bool | Median filter enabled |
 | `baseline` | bool | Baseline removal enabled |
 | `sgolay` | bool | Savitzky-Golay filter enabled |
-| `axis` | AxisType | Preferred axis type |
+| `axis` | AxisType | Preferred axis type, stored as raw 4-byte enum value |
 
 
 
 **AxisType enum**:
+
+`AxisType` is stored as raw enum bytes with descriptor type `typeid(AxisType).name()`, not as text and not with descriptor type `"int"`.
 
 | Value | Name |
 |-------|------|

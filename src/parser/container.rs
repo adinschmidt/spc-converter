@@ -147,15 +147,16 @@ pub fn checksum(data: &[u8]) -> u32 {
         i += 4;
     }
 
-    // Add u16s
+    // Add u16 tails. C++ promotes the zero-extended value before `~`, so this
+    // must be a 32-bit complement rather than a narrow u16 complement.
     while let Ok(val) = read_u16_le(data, i) {
-        sum = sum.wrapping_add(u32::from(!val));
+        sum = sum.wrapping_add(!u32::from(val));
         i += 2;
     }
 
-    // Add u8s
+    // Add u8 tails with the same promoted 32-bit complement behavior.
     while i < data.len() {
-        sum = sum.wrapping_add(u32::from(!data[i]));
+        sum = sum.wrapping_add(!u32::from(data[i]));
         i += 1;
     }
 
