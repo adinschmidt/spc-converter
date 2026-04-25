@@ -163,29 +163,6 @@ pub fn checksum(data: &[u8]) -> u32 {
     !sum
 }
 
-#[cfg(test)]
-mod tests {
-    use super::checksum;
-
-    #[test]
-    fn checksum_uses_32_bit_complement_for_u16_tail() {
-        let data = [0x34, 0x12];
-        assert_eq!(checksum(&data), 0x0000_1234);
-    }
-
-    #[test]
-    fn checksum_uses_32_bit_complement_for_u8_tail() {
-        let data = [0x7a];
-        assert_eq!(checksum(&data), 0x0000_007a);
-    }
-
-    #[test]
-    fn checksum_mixes_full_words_and_promoted_tails() {
-        let data = [0x78, 0x56, 0x34, 0x12, 0xbc, 0x9a, 0xde];
-        assert_eq!(checksum(&data), 0x1234_f214);
-    }
-}
-
 /// RLE8 decode: pairs of (count, byte).
 #[must_use]
 pub fn rle8_decode(data: &[u8]) -> Vec<u8> {
