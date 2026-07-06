@@ -16,7 +16,7 @@ pub struct ContainerHeader {
 
 impl ContainerHeader {
     pub const MAGIC: u32 = 0x5350_4330; // "0CPS" as stored bytes (reads as "SPC0")
-    pub const SIZE: usize = 80; // 4+4+8+8+4+8+10*4 = 80 bytes with reserved
+    pub const SIZE: usize = 80; // 4+4+8+8+4 + 4 (padding) + 8 + 40 (reserved) = 80 bytes
 
     /// Parse a container header from raw bytes.
     ///

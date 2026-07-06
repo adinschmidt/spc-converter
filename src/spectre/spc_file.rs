@@ -115,10 +115,14 @@ pub struct Config {
     /// Raman laser wavelength in nm (typically 785, 532, etc.)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raman_wavelength: Option<f64>,
-    /// Camera exposure time
+    /// Camera exposure time. Not part of the upstream `wndParametersDialog`
+    /// storage declaration, so files written by the Spectrum Analyzer Suite
+    /// never contain it; kept for forward compatibility.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exposure: Option<f64>,
-    /// Camera gain
+    /// Camera gain. Not part of the upstream `wndParametersDialog` storage
+    /// declaration, so files written by the Spectrum Analyzer Suite never
+    /// contain it; kept for forward compatibility.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gain: Option<f64>,
     /// Smoothing kernel size

@@ -61,7 +61,7 @@ impl BufferSection {
     }
 }
 
-/// Main header structure (96 bytes, packed).
+/// Main header structure (104 bytes, packed).
 #[derive(Debug, Clone)]
 pub struct PackHeader {
     pub type_name_offset: u64,

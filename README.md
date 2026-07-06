@@ -6,7 +6,7 @@ Unlocks your spectral data by extracting:
 - **Raw Intensity Data**: The primary spectral measurements.
 - **Reference Data**: Blank/dark spectrum readings.
 - **Calibration Settings**: Wavelength calibration coefficients (polynomial weights).
-- **Configuration**: Metadata such as Raman laser wavelength, exposure, gain, and smoothing.
+- **Configuration**: Metadata such as Raman laser wavelength, smoothing, averaging, and filter settings.
 - **Calculated Axes**: Wavelengths (nm) and Raman shifts (cm⁻¹), if calibration is present.
 
 ## Usage
@@ -80,9 +80,10 @@ The JSON output contains all extracted and computed data:
   },
   "config": {
     "raman_wavelength": 785.0,
-    "exposure": 1000.0,
-    "gain": 1.0,
-    "smoothing": 5
+    "smoothing": 5,
+    "average": 10,
+    "medfilt": true,
+    "axis": "raman_shifts"
   },
   "wavelength_axis": [400.0, 400.5, ...],
   "raman_shift_axis": [0.0, 10.5, ...]
