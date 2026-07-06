@@ -115,16 +115,6 @@ pub struct Config {
     /// Raman laser wavelength in nm (typically 785, 532, etc.)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raman_wavelength: Option<f64>,
-    /// Camera exposure time. Not part of the upstream `wndParametersDialog`
-    /// storage declaration, so files written by the Spectrum Analyzer Suite
-    /// never contain it; kept for forward compatibility.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub exposure: Option<f64>,
-    /// Camera gain. Not part of the upstream `wndParametersDialog` storage
-    /// declaration, so files written by the Spectrum Analyzer Suite never
-    /// contain it; kept for forward compatibility.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gain: Option<f64>,
     /// Smoothing kernel size
     #[serde(skip_serializing_if = "Option::is_none")]
     pub smoothing: Option<i32>,
@@ -338,8 +328,6 @@ fn extract_config(obj: &StorageObject) -> Result<Config, ParseError> {
                 let value = read_f64_le(&data_var.data)?;
                 match name {
                     "raman_wavelength" => config.raman_wavelength = Some(value),
-                    "exposure" => config.exposure = Some(value),
-                    "gain" => config.gain = Some(value),
                     _ => {
                         // Store as generic double param
                         config.other.push((name.to_string(), format!("{value}")));
